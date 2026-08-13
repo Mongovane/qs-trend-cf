@@ -1,7 +1,7 @@
 # Cloudflare Pages 配置
 # 说明：Pages 项目的静态资源目录为 public/，函数目录为 functions/（自动编译）。
 
-name = "qs-trend"
+name = "qs-trend-cf"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "public"
