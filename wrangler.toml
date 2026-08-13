@@ -1,0 +1,28 @@
+# Cloudflare Pages 配置
+# 说明：Pages 项目的静态资源目录为 public/，函数目录为 functions/（自动编译）。
+
+name = "qs-trend"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "public"
+
+[vars]
+# 评分档位：enhanced（六模块，含技术指标层）| legacy（复刻原版五模块权重）
+SCORING_PROFILE = "enhanced"
+# 扫描股票池大小（按成交额降序取前 N 只）
+SCAN_UNIVERSE = "500"
+# 每次轮询推进的股票数量。免费版务必 <= 12（每只约 3 个子请求，上限 50）
+SCAN_BATCH_SIZE = "8"
+# 市场宽度抓取页数上限（每页 100 只）。免费版建议 <= 12
+BREADTH_MAX_PAGES = "10"
+# 上游超时（毫秒）
+UPSTREAM_TIMEOUT_MS = "8000"
+# 可选：当边缘节点无法直连境内行情源时，配置反向代理前缀
+# UPSTREAM_PROXY_BASE = "https://your-proxy.example.com/fetch"
+
+# 扫描状态存储。需先执行：
+#   npx wrangler kv namespace create SCAN_KV
+# 然后把返回的 id 填入下方，或直接在 Pages 控制台绑定。
+# [[kv_namespaces]]
+# binding = "SCAN_KV"
+# id = "<your-kv-namespace-id>"
