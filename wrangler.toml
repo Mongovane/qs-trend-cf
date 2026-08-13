@@ -23,6 +23,6 @@ UPSTREAM_TIMEOUT_MS = "8000"
 # 扫描状态存储。需先执行：
 #   npx wrangler kv namespace create SCAN_KV
 # 然后把返回的 id 填入下方，或直接在 Pages 控制台绑定。
-# [[kv_namespaces]]
-# binding = "SCAN_KV"
-# id = "<your-kv-namespace-id>"
+[[kv_namespaces]]
+binding = "SCAN_KV"
+id = "89e478a0fcc54c7db1941d483631078c"
