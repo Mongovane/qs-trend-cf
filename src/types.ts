@@ -208,6 +208,23 @@ export interface TechnicalBlock {
   description: string;
 }
 
+export interface FilterFindingOut {
+  code: string;
+  severity: 'block' | 'warn';
+  message: string;
+}
+
+/** 可交易性与风险仓位（enhanced 档位） */
+export interface ExecutionBlock {
+  tradable: boolean;
+  findings: FilterFindingOut[];
+  plan: {
+    entry: number; stop: number; target: number;
+    stopBasis: string; targetBasis: string;
+    riskReward: number; weight: number; riskPct: number;
+  } | null;
+}
+
 export interface SignalEngineResult {
   action: string;
   score: number;
@@ -231,6 +248,8 @@ export interface SignalEngineResult {
   technical: TechnicalBlock | null;
   /** 新增：本次使用的评分档位 */
   scoring_profile: string;
+  /** 新增：可交易性检查与风险仓位（legacy 档位为 null） */
+  execution: ExecutionBlock | null;
 }
 
 /** 经 optimizer 后处理的信号（序列化后的 JSON 形态） */

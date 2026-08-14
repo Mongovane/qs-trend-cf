@@ -85,10 +85,20 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
 
   // ---- 2. 硬否决 ----
   let hardVetoReason: string | null = null;
-  for (const [kw, desc] of HARD_VETO) {
-    if (allSignalText.includes(kw)) {
-      hardVetoReason = desc;
-      break;
+
+  // 可交易性优先级最高：涨停买不到、停牌、出货形态、大盘在200日线下方，
+  // 这些与技术评分高低无关 —— 分数再高也执行不了。
+  const exec = (signalData as { execution?: { tradable: boolean; findings: Array<{ severity: string; message: string }> } }).execution;
+  if (exec && !exec.tradable) {
+    const blocker = exec.findings.find((f) => f.severity === 'block');
+    if (blocker) hardVetoReason = blocker.message;
+  }
+  if (!hardVetoReason) {
+    for (const [kw, desc] of HARD_VETO) {
+      if (allSignalText.includes(kw)) {
+        hardVetoReason = desc;
+        break;
+      }
     }
   }
   const vpPattern = vpData?.pattern ?? '';
@@ -206,6 +216,11 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
   if (vetoReason) {
     signalData.veto_reason = vetoReason;
     riskWarnings.unshift(vetoReason);
+  }
+  if (exec) {
+    for (const f of exec.findings) {
+      if (f.severity === 'warn' && !riskWarnings.includes(f.message)) riskWarnings.push(f.message);
+    }
   }
   signalData.risk_warnings = riskWarnings;
   signalData.position_advice = positionAdvice;

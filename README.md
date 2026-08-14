@@ -226,11 +226,38 @@ npm test
 
 ---
 
+## 回测与实盘
+
+```bash
+npm run bt:selftest      # 引擎自检（合成数据，无需行情源）
+npm run bt -- run        # 单次回测
+npm run bt:wf            # 滚动窗口优化（样本外检验）
+```
+
+- **[backtest/README.md](backtest/README.md)** — 防未来函数的结构性约束、A股约束建模、如何判读结果
+- **[integrations/README.md](integrations/README.md)** — QMT / PTrade 模拟盘接入与上线检查清单
+
+回测框架与线上看板**共用同一份分析引擎**，不存在两套实现。
+首轮回测就暴露出一个结构缺陷：信号 `action` 是时点建议而非持仓状态，
+用同一门槛做进出会导致年换手 30 倍、90% 交易在 2.5 日内因「信号退化」平仓，
+费用吃光收益。加滞后带（进 62 分 / 出 45 分 / 最短持仓 5 日）后换手降到 6.8 倍。
+详见 backtest/README.md。
+
+## 关于「AI 分析结论」
+
+**本项目不涉及任何 AI 模型。** 没有大语言模型、没有机器学习、没有外部推理接口。
+唯一的外部接口是行情数据（腾讯/新浪/东财公开接口）。所有结论来自固定权重的
+确定性规则计算，同样输入永远得到同样输出。
+
+界面上的卡片标题已从「AI 分析结论」改为「量化规则结论」，并提供「计算依据」
+按钮展示完整算法链路与当前权重。详见 **[docs/ENTRY-STRATEGY.md](docs/ENTRY-STRATEGY.md)**。
+
 ## 文档
 
 - **[docs/ANALYSIS.md](docs/ANALYSIS.md)** — v4.0 原项目逐文件分析、算法还原、缺陷清单
 - **[docs/DEPLOY.md](docs/DEPLOY.md)** — 部署步骤、KV 配置、免费版配额换算
 - **[docs/MIGRATION.md](docs/MIGRATION.md)** — 迁移决策记录与取舍说明
+- **[docs/ENTRY-STRATEGY.md](docs/ENTRY-STRATEGY.md)** — 买入价对不上的原因、入场过滤层、A/B 结果
 
 ---
 

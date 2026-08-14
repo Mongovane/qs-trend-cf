@@ -15,12 +15,19 @@
     "test": "node --test tests/parity.test.mjs",
     "deploy": "wrangler pages deploy public --project-name=qs-trend",
     "pretest": "esbuild tests/entry.ts --bundle --format=esm --platform=neutral --outfile=tests/build/bundle.mjs",
-    "golden": "python3 tools/gen_golden.py ./reference tests/golden.json"
+    "golden": "python3 tools/gen_golden.py ./reference tests/golden.json",
+    "audit:ui": "node tools/ui-audit.mjs",
+    "bt": "esbuild backtest/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=backtest/.build/cli.mjs && node backtest/.build/cli.mjs",
+    "bt:selftest": "esbuild backtest/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=backtest/.build/cli.mjs && node backtest/.build/cli.mjs selftest",
+    "bt:wf": "esbuild backtest/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=backtest/.build/cli.mjs && node backtest/.build/cli.mjs wf",
+    "bt:build": "esbuild backtest/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=backtest/.build/cli.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
     "typescript": "^5.6.3",
     "wrangler": "^3.90.0",
-    "esbuild": "^0.24.0"
+    "esbuild": "^0.24.0",
+    "playwright": "^1.49.0",
+    "@types/node": "^22.10.0"
   }
 }

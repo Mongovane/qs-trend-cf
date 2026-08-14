@@ -22,6 +22,10 @@ import { analyzePatterns } from './pattern';
 import { analyzeBreakout } from './breakout';
 import { analyzeCanslim } from './canslim';
 import { analyzeTechnical, type TechnicalResult } from './technical';
+import {
+  buildRealisticPlan, checkRegime, checkTradability,
+  DEFAULT_FILTER_PARAMS, type EntryFilterParams,
+} from './entryFilters';
 import { clamp, fmt, pyInt, pyRound } from '../util/pynum';
 
 /**
@@ -218,6 +222,7 @@ export function runAnalysis(
   flows?: readonly FundFlow[] | null,
   indexKlines?: readonly Kline[] | null,
   profile: ScoringProfile = 'enhanced',
+  filterParams: EntryFilterParams = DEFAULT_FILTER_PARAMS,
 ): SignalEngineResult {
   const isLegacy = profile === 'legacy';
   const trend = analyzeTrend(klines, isLegacy);
@@ -333,7 +338,37 @@ export function runAnalysis(
   if (canslim.cup_handle) keyLevels['杯柄买点'] = canslim.cup_handle.buy_point;
   if (trend.trendline) keyLevels['趋势线'] = trend.trendline.current_price;
 
+  // ══ 可交易性检查与真实交易计划（仅 enhanced 档位）══
+  // legacy 档位必须与 v4.0 逐字段一致，因此完全不走这条分支。
+  let execution: SignalEngineResult['execution'] = null;
+  if (!isLegacy) {
+    const code = quote?.symbol ?? '';
+    const nm = quote?.name ?? '';
+    const trad = checkTradability(code, nm, klines, quote, flows, filterParams);
+    const regime = checkRegime(indexKlines, filterParams);
+    const findings = [...trad.findings];
+    if (regime) findings.push(regime);
+    const rp = buildRealisticPlan(klines, patterns, breakouts, quote, filterParams);
+    execution = {
+      tradable: trad.tradable && !findings.some((f) => f.severity === 'block'),
+      findings,
+      plan: rp,
+    };
+  }
+
   const tradePlan = buildTradePlan(action, score, patterns, breakouts, klines);
+  // enhanced 档位用结构位替换硬编码的 −5%/+10%。
+  // 原实现下 target/stop 恒为 entry×1.1 / entry×0.95，盈亏比因此**永远是 2.0**，
+  // 那是两个常数的算术结果，不携带任何关于该标的的信息。
+  if (execution?.plan && filterParams.applyStructuralPlan) {
+    tradePlan.entry_price = execution.plan.entry;
+    tradePlan.stop_loss = execution.plan.stop;
+    tradePlan.target_price = execution.plan.target;
+    tradePlan.risk_reward_ratio = execution.plan.riskReward;
+    tradePlan.max_loss_pct = pyRound(
+      execution.plan.entry > 0
+        ? ((execution.plan.entry - execution.plan.stop) / execution.plan.entry) * 100 : 0, 2);
+  }
 
   const descParts = [`综合${score}分`];
   if (trend.direction) descParts.push(`趋势=${trend.direction}(${trendScore})`);
@@ -376,5 +411,6 @@ export function runAnalysis(
         }
       : null,
     scoring_profile: profile,
+    execution,
   };
 }

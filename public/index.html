@@ -708,6 +708,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 /* ===== Tooltip ===== */
 #signal-tooltip {
   position: absolute; z-index: 260; display: none;
+  pointer-events: none;  /* 否则鼠标移入面板会打断 zr mousemove，面板闪烁 */
   background: rgba(26, 31, 38, 0.97);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--line-2); border-radius: var(--r);
@@ -872,7 +873,9 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   <div class="right-panel">
     <!-- 一句话总结（小白第一眼看的） -->
     <div class="summary-card" id="summary-card">
-      <div class="sc-header">AI 分析结论</div>
+      <div class="sc-header" style="cursor:help" onclick="showEngineInfo()">量化规则结论
+        <span style="margin-left:auto;font-size:9px;font-weight:400;color:var(--t3);
+                     border:1px solid var(--line-2);border-radius:3px;padding:1px 5px">计算依据</span></div>
       <div class="sum-body" id="sum-body">
         <div class="sum-action-row">
           <span class="sum-badge sum-badge-watch">等待分析</span>
@@ -989,37 +992,100 @@ const C = {
   avgLine: '#f0b90b',
 };
 
+/**
+ * 把各种 action 文案归一为方向。
+ * 优化器会输出「强烈买入 / 买入 / 谨慎买入 / 观望 / 卖出」等变体，
+ * 任何按方向分支的逻辑都必须走这里，不能用字符串全等。
+ */
+function signalDirection(action) {
+  const a = String(action || '');
+  if (a.includes('卖出')) return 'sell';
+  if (a.includes('买入')) return 'buy';
+  if (a.includes('观望')) return 'watch';
+  return 'other';
+}
+
+// ===== ECharts 主题 =====
+// 注册为主题而非 setOption，因为业务代码大量使用 setOption(..., true)，
+// notMerge 会丢弃所有非主题来源的样式（原实现即因此退回白底 tooltip）。
+const FONT = '-apple-system, "SF Pro Text", Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
+const MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace';
+
+const AXIS_COMMON = {
+  axisLine: { lineStyle: { color: 'rgba(255,255,255,0.10)' } },
+  axisTick: { show: false },
+  axisLabel: { color: '#59636f', fontSize: 10, fontFamily: MONO },
+  splitLine: { lineStyle: { color: 'rgba(255,255,255,0.045)', type: 'dashed' } },
+};
+
+const QS_THEME = {
+  // 调色板顺序即 MA5/MA10/MA20/MA60 —— tooltip 的 p.color 取自此处，
+  // 必须与 series.lineStyle 一致，否则图例与线条颜色对不上（原实现即如此）。
+  color: ['#f0b90b', '#c661ff', '#5b7cfa', '#2dd4bf', '#2dd4bf', '#f6465d', '#0ecb81'],
+  backgroundColor: 'transparent',
+  textStyle: { fontFamily: FONT, color: '#8b95a3' },
+  title: { textStyle: { color: '#eaedf2', fontWeight: 600 } },
+  legend: { textStyle: { color: '#8b95a3', fontSize: 10 }, inactiveColor: '#3a424c' },
+  tooltip: {
+    backgroundColor: 'rgba(19,24,31,0.93)',
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    padding: [9, 12],
+    textStyle: { color: '#eaedf2', fontSize: 11.5, fontFamily: FONT },
+    extraCssText:
+      'backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);' +
+      'border-radius:9px;box-shadow:0 14px 38px rgba(0,0,0,.62);',
+    axisPointer: {
+      lineStyle: { color: 'rgba(255,255,255,0.22)', width: 1, type: [4, 4] },
+      crossStyle: { color: 'rgba(255,255,255,0.22)', width: 1, type: [4, 4] },
+      label: {
+        backgroundColor: '#232932', color: '#eaedf2',
+        borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1,
+        fontSize: 10, fontFamily: MONO, padding: [3, 6], borderRadius: 4,
+        shadowBlur: 0,
+      },
+    },
+  },
+  categoryAxis: { ...AXIS_COMMON, splitLine: { show: false } },
+  valueAxis: AXIS_COMMON,
+  logAxis: AXIS_COMMON,
+  timeAxis: AXIS_COMMON,
+  candlestick: {
+    itemStyle: {
+      color: '#f6465d', color0: '#0ecb81',
+      borderColor: '#f6465d', borderColor0: '#0ecb81', borderWidth: 1,
+    },
+  },
+  dataZoom: {
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    fillerColor: 'rgba(91,124,250,0.13)',
+    handleStyle: { color: '#5b7cfa', borderColor: '#5b7cfa' },
+    moveHandleStyle: { color: 'rgba(91,124,250,0.6)' },
+    dataBackground: {
+      lineStyle: { color: 'rgba(255,255,255,0.14)', width: 1 },
+      areaStyle: { color: 'rgba(255,255,255,0.04)' },
+    },
+    selectedDataBackground: {
+      lineStyle: { color: '#5b7cfa', width: 1 },
+      areaStyle: { color: 'rgba(91,124,250,0.10)' },
+    },
+    textStyle: { color: '#59636f', fontSize: 10, fontFamily: MONO },
+    emphasis: { handleStyle: { borderColor: '#8aa3ff' } },
+  },
+};
+
 // ===== 初始化 =====
 function initCharts() {
-  const opts = {
-    backgroundColor: C.bg,
-    textStyle: { color: C.text, fontFamily: 'Microsoft YaHei' },
-    categoryAxis: {
-      axisLine: { lineStyle: { color: C.axis } },
-      axisLabel: { color: C.textDim, fontSize: 10 },
-      splitLine: { show: false },
-    },
-    valueAxis: {
-      axisLine: { lineStyle: { color: C.axis } },
-      axisLabel: { color: C.textDim, fontSize: 10 },
-      splitLine: { lineStyle: { color: C.grid } },
-    },
-    tooltip: { backgroundColor: 'rgba(20,20,20,0.95)', borderColor: '#333', textStyle: { color: '#ddd', fontSize: 12 } },
-  };
+  echarts.registerTheme('qsdark', QS_THEME);
+  const T = 'qsdark';
+  klineChart = echarts.init(document.getElementById('kline-chart'), T);
+  volumeChart = echarts.init(document.getElementById('volume-chart'), T);
+  flowChart = echarts.init(document.getElementById('flow-chart'), T);
+  minuteChart = echarts.init(document.getElementById('minute-chart'), T);
+  minuteVolChart = echarts.init(document.getElementById('minute-vol'), T);
+  indicatorChart = echarts.init(document.getElementById('indicator-chart'), T);
 
-  klineChart = echarts.init(document.getElementById('kline-chart'));
-  volumeChart = echarts.init(document.getElementById('volume-chart'));
-  flowChart = echarts.init(document.getElementById('flow-chart'));
-  minuteChart = echarts.init(document.getElementById('minute-chart'));
-  minuteVolChart = echarts.init(document.getElementById('minute-vol'));
-  indicatorChart = echarts.init(document.getElementById('indicator-chart'));
-
-  klineChart.setOption(opts);
-  volumeChart.setOption(opts);
-  flowChart.setOption(opts);
-  minuteChart.setOption(opts);
-  minuteVolChart.setOption(opts);
-  indicatorChart.setOption(opts);
 
   window.addEventListener('resize', () => {
     klineChart.resize(); volumeChart.resize(); flowChart.resize();
@@ -1084,11 +1150,15 @@ function switchView(view) {
     sep.style.display = '';
     document.querySelectorAll('.tb-btn[data-range]').forEach(b => b.style.display = '');
     document.getElementById('zoom-info').style.display = '';
-    // 指标副图工具栏显示（如果有指标）
+    // 工具栏在日K/周K下常显 —— 「副图」按钮即为关闭开关。
+    // 原实现要求 _currentIndicator !== 'none' 才显示，而该变量只能由
+    // 工具栏内按钮改变，形成死锁导致五个指标永久不可用。
+    document.getElementById('indicator-toolbar').style.display = 'flex';
     if (_currentIndicator !== 'none') {
-      document.getElementById('indicator-toolbar').style.display = 'flex';
       document.getElementById('indicator-chart').style.display = 'block';
       setTimeout(() => indicatorChart.resize(), 50);
+    } else {
+      document.getElementById('indicator-chart').style.display = 'none';
     }
     // 切到日K/周K视图时隐藏分时缠论面板
     document.getElementById('chanlun-card').style.display = 'none';
@@ -1201,11 +1271,11 @@ function renderKline(klines, signal) {
     for (const b of signal.breakouts) {
       if (b.stop_loss && b.stop_loss > 0) {
         const slLabel = isBearish
-          ? `止损 ${b.stop_loss.toFixed(2)}\n涨到这里就止损`
-          : `止损 ${b.stop_loss.toFixed(2)}\n跌到这里就卖`;
-        markLines.push({ yAxis: b.stop_loss, lineStyle: { color: C.down, type: 'dashed', width: 2 },
-          label: { formatter: slLabel, color: '#fff', fontSize: 11, fontWeight: 'bold',
-            backgroundColor: C.down, padding: [3,6], borderRadius: 3, position: 'insideStartTop' } });
+          ? `海龟止损 ${b.stop_loss.toFixed(2)}`
+          : `海龟止损 ${b.stop_loss.toFixed(2)}`;
+        markLines.push({ yAxis: b.stop_loss, lineStyle: { color: C.down, type: [5, 4], width: 1, opacity: 0.85 },
+          label: { formatter: slLabel, color: '#04140d', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
+            backgroundColor: C.down, padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
         const nVal = b.current_n || '?';
         _signalLines.push({
           value: b.stop_loss,
@@ -1221,10 +1291,13 @@ function renderKline(klines, signal) {
       // 持仓也要显示入场价，方便知道成本位置
       if (b.entry_price && b.entry_price > 0 && b.signal !== '观望') {
         const entryColor = isBearish ? C.down : C.up;
-        const entryText = isBearish ? `做空 ${b.entry_price.toFixed(2)}` : `入场 ${b.entry_price.toFixed(2)}`;
-        markLines.push({ yAxis: b.entry_price, lineStyle: { color: entryColor, type: 'solid', width: 2 },
-          label: { formatter: entryText, color: '#fff', fontSize: 11, fontWeight: 'bold',
-            backgroundColor: entryColor, padding: [3,6], borderRadius: 3, position: 'insideStartTop' } });
+        // 标注「历史」以区别于操作计划里的当前买入价
+        const entryText = isBearish
+          ? `历史做空 ${b.entry_price.toFixed(2)}`
+          : `历史突破 ${b.entry_price.toFixed(2)}`;
+        markLines.push({ yAxis: b.entry_price, lineStyle: { color: entryColor, type: 'solid', width: 1.2, opacity: 0.9 },
+          label: { formatter: entryText, color: '#fff', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
+            backgroundColor: entryColor, padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
         _signalLines.push({
           value: b.entry_price,
           title: isBearish ? '做空入场价（海龟法则）' : '做多入场价（海龟法则）',
@@ -1238,16 +1311,43 @@ function renderKline(klines, signal) {
       }
     }
   }
+  // 当前操作计划的价位（与右侧「操作计划」卡片同源，避免两处数字打架）
+  const tp = signal.trade_plan || {};
+  if (tp.entry_price > 0 && signal.action && signal.action.includes('买入')) {
+    markLines.push({ yAxis: tp.entry_price, lineStyle: { color: '#f0b90b', type: 'solid', width: 1, opacity: 0.9 },
+      label: { formatter: `计划买入 ${tp.entry_price.toFixed(2)}`, color: '#1a1200', fontSize: 9.5,
+        fontWeight: 'bold', backgroundColor: '#f0b90b', padding: [3, 5], borderRadius: 3, position: 'insideEndBottom' } });
+    _signalLines.push({
+      value: tp.entry_price,
+      title: '计划买入价（当前）',
+      formula: `= 最新收盘价 ${tp.entry_price.toFixed(2)}`,
+      desc: '这是「操作计划」卡片里的买入价，等于当前价格。\n'
+        + '注意与图上标着「历史突破」的那条线区分 —— 后者是海龟法则几天前的入场价，不是现在的买点。',
+    });
+  }
+  if (tp.stop_loss > 0 && signal.action && signal.action.includes('买入')) {
+    markLines.push({ yAxis: tp.stop_loss, lineStyle: { color: C.down, type: 'solid', width: 1, opacity: 0.75 },
+      label: { formatter: `计划止损 ${tp.stop_loss.toFixed(2)}`, color: '#04140d', fontSize: 9.5,
+        fontWeight: 'bold', backgroundColor: C.down, padding: [3, 5], borderRadius: 3, position: 'insideEndBottom' } });
+  }
+
   // 形态目标价
   if (signal.patterns) {
     for (const p of signal.patterns) {
       if (p.target_price && p.target_price > 0) {
-        const targetLabel = isBearish
-          ? `目标 ${p.target_price.toFixed(2)}\n跌到这里就止盈`
-          : `目标 ${p.target_price.toFixed(2)}\n涨到这里就卖`;
-        markLines.push({ yAxis: p.target_price, lineStyle: { color: '#5b7cfa', type: 'dashed', width: 2 },
-          label: { formatter: targetLabel, color: '#fff', fontSize: 11, fontWeight: 'bold',
-            backgroundColor: '#5b7cfa', padding: [3,6], borderRadius: 3, position: 'insideStartTop' } });
+        const curPx = _klineData.length ? _klineData[_klineData.length - 1].close : 0;
+        const pBearish = p.direction === '看跌';
+        // 方向与位置矛盾的目标位不画，避免出现「目标低于现价却写着涨到这里就卖」
+        if (curPx > 0) {
+          if (!pBearish && p.target_price <= curPx) continue;
+          if (pBearish && p.target_price >= curPx) continue;
+        }
+        const targetLabel = pBearish
+          ? `下行目标 ${p.target_price.toFixed(2)}`
+          : `形态目标 ${p.target_price.toFixed(2)}`;
+        markLines.push({ yAxis: p.target_price, lineStyle: { color: pBearish ? C.down : '#5b7cfa', type: [5, 4], width: 1, opacity: 0.85 },
+          label: { formatter: targetLabel, color: '#fff', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
+            backgroundColor: pBearish ? C.down : '#5b7cfa', padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
         _signalLines.push({
           value: p.target_price,
           title: `${p.name} 目标价`,
@@ -1293,10 +1393,10 @@ function renderKline(klines, signal) {
         markPoint: markPoints.length ? { data: markPoints, animation: false } : undefined,
         markLine: markLines.length ? { silent: true, animation: false, data: markLines, symbol: 'none' } : undefined,
       },
-      { name: 'MA5', type: 'line', data: ma5, symbol: 'none', lineStyle: { color: C.ma5, width: 1 } },
-      { name: 'MA10', type: 'line', data: ma10, symbol: 'none', lineStyle: { color: C.ma10, width: 1 } },
-      { name: 'MA20', type: 'line', data: ma20, symbol: 'none', lineStyle: { color: C.ma20, width: 1 } },
-      { name: 'MA60', type: 'line', data: ma60, symbol: 'none', lineStyle: { color: C.ma60, width: 1 } },
+      { name: 'MA5', type: 'line', data: ma5, symbol: 'none', itemStyle: { color: C.ma5 }, lineStyle: { color: C.ma5, width: 1.1 } },
+      { name: 'MA10', type: 'line', data: ma10, symbol: 'none', itemStyle: { color: C.ma10 }, lineStyle: { color: C.ma10, width: 1.1 } },
+      { name: 'MA20', type: 'line', data: ma20, symbol: 'none', itemStyle: { color: C.ma20 }, lineStyle: { color: C.ma20, width: 1.1 } },
+      { name: 'MA60', type: 'line', data: ma60, symbol: 'none', itemStyle: { color: C.ma60 }, lineStyle: { color: C.ma60, width: 1.1 } },
     ],
     tooltip: {
       trigger: 'axis', axisPointer: { type: 'cross', lineStyle: { color: '#666' } },
@@ -1331,10 +1431,10 @@ function renderKline(klines, signal) {
     dataZoom: [
       { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: 'slider', start: ds, end: 100, height: 28, bottom: 8,
-        borderColor: '#222', backgroundColor: '#12161b',
-        fillerColor: 'rgba(255,152,0,0.1)',
-        selectedDataBackground: { lineStyle: { color: C.ma60 }, areaStyle: { color: 'rgba(255,152,0,0.15)' } },
-        dataBackground: { lineStyle: { color: '#222' }, areaStyle: { color: '#111' } },
+        borderColor: 'transparent', backgroundColor: 'rgba(255,255,255,0.02)',
+        fillerColor: 'rgba(91,124,250,0.13)',
+        selectedDataBackground: { lineStyle: { color: '#5b7cfa' }, areaStyle: { color: 'rgba(91,124,250,0.10)' } },
+        dataBackground: { lineStyle: { color: 'rgba(255,255,255,0.14)' }, areaStyle: { color: 'rgba(255,255,255,0.04)' } },
         handleStyle: { color: '#5b7cfa', borderColor: '#5b7cfa' },
         moveHandleStyle: { color: '#5b7cfa' },
         textStyle: { color: C.textDim, fontSize: 10 },
@@ -1365,6 +1465,9 @@ function renderKline(klines, signal) {
 
   bindZoomSync();
   updateZoomInfo(ds, 100);
+  if (currentView !== 'minute') {
+    document.getElementById('indicator-toolbar').style.display = 'flex';
+  }
   renderIndicator(_currentIndicator);
 }
 
@@ -1463,11 +1566,19 @@ function bindChartTooltip() {
 
     if (found) {
       tooltipEl.innerHTML =
-        '<div class="stt-hint">信号说明（鼠标移开自动隐藏）</div>' +
         '<div class="stt-title">' + found.title + '</div>' +
         (found.formula ? '<div class="stt-formula">' + found.formula + '</div>' : '') +
-        (found.desc ? '<div class="stt-desc">' + found.desc + '</div>' : '');
+        (found.desc ? '<div class="stt-desc">' + found.desc + '</div>' : '') +
+        '<div class="stt-hint">移开鼠标自动隐藏</div>';
       tooltipEl.style.display = 'block';
+      // 放到光标的对侧，避免遮挡正在查看的价位
+      const box = klineChart.getDom().getBoundingClientRect();
+      const onLeftHalf = e.offsetX < box.width / 2;
+      tooltipEl.style.left = onLeftHalf ? 'auto' : '12px';
+      tooltipEl.style.right = onLeftHalf ? '12px' : 'auto';
+      const th = tooltipEl.offsetHeight || 150;
+      const below = e.offsetY + 16;
+      tooltipEl.style.top = (below + th > box.height ? Math.max(8, e.offsetY - th - 16) : below) + 'px';
     } else {
       tooltipEl.style.display = 'none';
     }
@@ -1889,7 +2000,7 @@ function renderMinute(data, chanlunData) {
       {
         name: '价格', type: 'line', data: prices, symbol: 'none',
         lineStyle: { color: pColor, width: 1.5 },
-        areaStyle: { color: pColor === C.up ? 'rgba(255,45,45,0.08)' : 'rgba(0,179,92,0.08)' },
+        areaStyle: { color: pColor === C.up ? 'rgba(246,70,93,0.09)' : 'rgba(14,203,129,0.09)' },
         markLine: { silent: true, symbol: 'none', animation: false,
           data: [{ yAxis: pre, lineStyle: { color: C.preClose, type: 'dashed', width: 1 },
             label: { formatter: '昨收 ' + pre.toFixed(3), color: C.textDim, fontSize: 10, position: 'insideEndTop' } }]
@@ -2025,6 +2136,7 @@ function renderRealtimeFlow(data) {
   const times = flows.map(f => f.time);
   const mainNet = flows.map(f => +(f.main_net / 1e8).toFixed(4));
   const superLarge = flows.map(f => +(f.super_large_net / 1e8).toFixed(4));
+  const lastMain = mainNet.length ? mainNet[mainNet.length - 1] : 0;
 
   flowChart.setOption({
     backgroundColor: C.bg,
@@ -2034,8 +2146,25 @@ function renderRealtimeFlow(data) {
     yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9 }, splitLine: { lineStyle: { color: C.grid } } },
     grid: { left: 50, right: 20, top: 22, bottom: 18 },
     series: [
-      { name: '主力净流入(累计)', type: 'bar', data: mainNet.map(v => ({ value: v, itemStyle: { color: v >= 0 ? C.up + '88' : C.down + '88' } })) },
-      { name: '超大单(累计)', type: 'line', data: superLarge, symbol: 'none', lineStyle: { color: C.ma20, width: 1 } },
+      { name: '主力净流入(累计)', type: 'line', data: mainNet,
+        symbol: 'none', smooth: 0.2, z: 2,
+        itemStyle: { color: lastMain >= 0 ? C.up : C.down },
+        lineStyle: { color: lastMain >= 0 ? C.up : C.down, width: 1.6 },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1,
+            lastMain >= 0
+              ? [{ offset: 0, color: 'rgba(246,70,93,0.32)' }, { offset: 1, color: 'rgba(246,70,93,0)' }]
+              : [{ offset: 0, color: 'rgba(14,203,129,0)' }, { offset: 1, color: 'rgba(14,203,129,0.32)' }]),
+        },
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { color: 'rgba(255,255,255,0.18)', type: 'dashed', width: 1 },
+          label: { show: false },
+          data: [{ yAxis: 0 }],
+        },
+      },
+      { name: '超大单(累计)', type: 'line', data: superLarge, symbol: 'none', smooth: 0.2, z: 3,
+        itemStyle: { color: C.ma20 }, lineStyle: { color: C.ma20, width: 1.2, type: 'dashed' } },
     ],
     tooltip: { trigger: 'axis', formatter: p => {
       let html = `<div style="font-size:11px">${p[0].axisValue}</div>`;
@@ -2095,6 +2224,36 @@ function renderSummary(signal) {
     </div>`;
   }
 
+  // 可交易性：涨停买不到、出货形态、大盘择时等执行层拦截
+  let execHtml = '';
+  const ex = signal.execution;
+  if (ex) {
+    const blocks = (ex.findings || []).filter(f => f.severity === 'block');
+    const warns = (ex.findings || []).filter(f => f.severity === 'warn');
+    if (blocks.length) {
+      execHtml += `<div style="margin-top:8px;padding:8px 9px;background:var(--up-soft);
+        border:1px solid var(--up-line);border-radius:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--up-2);margin-bottom:4px">
+          ⛔ 无法执行（${blocks.length}项）</div>
+        ${blocks.map(f => `<div style="font-size:11px;color:var(--up-2);line-height:1.6">· ${f.message}</div>`).join('')}
+      </div>`;
+    }
+    if (warns.length) {
+      execHtml += `<div style="margin-top:6px;padding:7px 9px;background:var(--warn-soft);
+        border:1px solid var(--warn-line);border-radius:6px">
+        ${warns.map(f => `<div style="font-size:11px;color:var(--warn);line-height:1.55">⚠ ${f.message}</div>`).join('')}
+      </div>`;
+    }
+    if (ex.plan) {
+      execHtml += `<div style="margin-top:6px;font-size:11px;color:var(--t2);line-height:1.7">
+        <span style="color:var(--t3)">止损依据</span> ${ex.plan.stopBasis}
+        <span style="margin-left:10px;color:var(--t3)">目标依据</span> ${ex.plan.targetBasis}<br>
+        <span style="color:var(--t3)">按单笔风险 ${(ex.plan.riskPct*100).toFixed(2)}% 反推权重</span>
+        <b style="color:var(--t1)">${(ex.plan.weight*100).toFixed(1)}%</b>
+      </div>`;
+    }
+  }
+
   // 仓位建议
   let posHtml = '';
   if (posAdvice && posAdvice !== '空仓等待' && (isBuy || isCautious)) {
@@ -2117,6 +2276,7 @@ function renderSummary(signal) {
     ${optimizeHtml}
     ${posHtml}
     ${riskNotesHtml}
+    ${execHtml}
     <div class="sum-risk-row">
       <span class="sum-risk-dot ${riskClass}"></span>
       <span style="color:var(--t2)">风险 <span style="color:${risk==='低'?C.down:risk==='高'?C.up:'var(--warn)'};font-weight:700">${risk}</span></span>
@@ -2176,7 +2336,7 @@ function renderTradePlan(signal) {
 
   // 买入计划：显示价格三件套
   const cautionBanner = isCautious ? `
-    <div style="padding:6px 8px;margin-bottom:8px;background:rgba(255,152,0,0.1);border-radius:6px;border:1px solid rgba(255,152,0,0.2);font-size:11px;color:#ffb74d;line-height:1.5">
+    <div style="padding:6px 8px;margin-bottom:8px;background:var(--warn-soft);border-radius:6px;border:1px solid var(--warn-line);font-size:11px;color:var(--warn);line-height:1.5">
       ⚠ 谨慎买入：信号存在风险因素，建议轻仓试探，严格执行止损
     </div>` : '';
   el.innerHTML = `
@@ -2213,6 +2373,7 @@ function renderTradePlan(signal) {
 
 // ===== 信号面板 =====
 function renderSignal(signal) {
+  window._lastSignal = signal;
   // 一句话总结
   renderSummary(signal);
 
@@ -2819,7 +2980,8 @@ function renderHistory() {
 
 function sigTag(action, score) {
   if (!action) return '<span class="sig-tag none">--</span>';
-  const cls = action === '买入' ? 'buy' : action === '卖出' ? 'sell' : 'watch';
+  const dir = signalDirection(action);
+  const cls = dir === 'buy' ? 'buy' : dir === 'sell' ? 'sell' : 'watch';
   return `<span class="sig-tag ${cls}">${action}${score ? ' ' + score : ''}</span>`;
 }
 
@@ -3006,8 +3168,7 @@ function switchIndicator(ind) {
   const toolbar = document.getElementById('indicator-toolbar');
   if (ind === 'none') {
     chart.style.display = 'none';
-    toolbar.style.display = 'none';
-    // 清除BOLL轨道线（如果之前有叠加）
+    toolbar.style.display = 'flex';   // 保持可见，否则无法再次开启指标
     clearBolloverlay();
   } else {
     // 切换到非BOLL指标时清除BOLL轨道
@@ -3281,7 +3442,7 @@ async function loadOverview() {
   el.innerHTML = results.map(s => {
     const pctCls = s.pct > 0 ? 'up' : s.pct < 0 ? 'down' : 'flat';
     const pctStr = s.pct != null ? (s.pct > 0 ? '+' : '') + s.pct.toFixed(2) + '%' : '--';
-    const sigTag = s.action ? `<span class="wp-ov-sig-tag ${s.action === '买入' ? 'buy' : s.action === '卖出' ? 'sell' : 'watch'}">${s.action}</span>` : '<span class="wp-ov-sig-tag none">--</span>';
+    const sigTag = s.action ? `<span class="wp-ov-sig-tag ${signalDirection(s.action)==='buy' ? 'buy' : signalDirection(s.action)==='sell' ? 'sell' : 'watch'}">${s.action}</span>` : '<span class="wp-ov-sig-tag none">--</span>';
     const scoreStr = s.score ? s.score : '--';
     const scoreColor = s.score >= 60 ? C.up : s.score >= 40 ? '#f0b90b' : s.score > 0 ? C.down : '#666';
     return `<div class="wp-ov-item" onclick="analyze('${s.code}');closePanel()">
@@ -3292,6 +3453,51 @@ async function loadOverview() {
       <span class="wp-ov-sig">${sigTag}</span>
     </div>`;
   }).join('');
+}
+
+// ===== 引擎说明（回答「这个结论是怎么来的」）=====
+function showEngineInfo() {
+  const prof = (window._lastSignal && window._lastSignal.scoring_profile) || 'enhanced';
+  const ms = (window._lastSignal && window._lastSignal.module_scores) || {};
+  const rows = Object.entries(ms).map(([k, v]) => `<tr><td style="padding:2px 8px 2px 0">${k}</td>
+    <td style="text-align:right;font-family:var(--num)">${v}</td></tr>`).join('');
+  const w = prof === 'legacy'
+    ? '趋势25% + CANSLIM20% + 突破20% + 量价20% + 形态15%'
+    : '趋势20% + 技术指标20% + 量价18% + 突破15% + CANSLIM15% + 形态12%';
+  const html = `
+    <div style="font-size:13px;line-height:1.75;color:var(--t1)">
+      <div style="padding:9px 11px;background:var(--warn-soft);border:1px solid var(--warn-line);
+                  border-radius:6px;margin-bottom:12px;color:var(--warn);font-size:12px">
+        本结论<b>不涉及任何 AI 模型</b>。没有调用大模型，没有机器学习，没有外部推理接口。
+        全部输出来自固定权重的确定性规则计算 —— 同样的输入永远得到同样的输出。
+      </div>
+      <b>数据来源</b>（唯一的外部接口）<br>
+      · 行情与K线：腾讯 / 新浪 / 东方财富公开接口<br>
+      · 资金流、涨跌家数：东方财富公开接口<br>
+      <br>
+      <b>计算链路</b><br>
+      六个模块各自算分 → 加权求和取整 → 五级重评 → 硬/软否决 → 仓位与盈亏比检查<br>
+      <br>
+      <b>当前权重（${prof} 档位）</b><br>
+      <span style="color:var(--ac-2);font-family:var(--num);font-size:11px">${w}</span><br>
+      <br>
+      <b>本次各模块得分</b>
+      <table style="font-size:12px;margin-top:4px">${rows}</table>
+      <br>
+      <div style="font-size:11px;color:var(--t2);padding-top:8px;border-top:1px solid var(--line)">
+        所有阈值（60/75分线、±2%、±30% 等）都是<b>经验值</b>，未经回测证明有效。
+        仓库内 <code>npm run bt:wf</code> 可做样本外检验 —— 请先自己验证再使用。
+      </div>
+    </div>`;
+  const ov = document.createElement('div');
+  ov.className = 'scan-overlay show';
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = `<div class="scan-modal" style="width:min(560px,92vw)">
+    <div class="scan-header"><span class="scan-title">结论是怎么算出来的</span>
+      <button class="scan-close">×</button></div>
+    <div class="scan-body">${html}</div></div>`;
+  ov.querySelector('.scan-close').onclick = () => ov.remove();
+  document.body.appendChild(ov);
 }
 
 // ===== 信号准确率统计 =====
@@ -3316,10 +3522,13 @@ function calcSignalAccuracy(code) {
     const prev = records[i + 1];
     if (!prev.price || !cur.price) continue;
     const priceChange = (cur.price - prev.price) / prev.price * 100;
+    // 归一化方向：优化器会输出「强烈买入 / 买入 / 谨慎买入 / 观望」等变体，
+    // 必须按方向归类，不能用字符串全等（原实现导致准确率恒为 0%）。
+    const dir = signalDirection(prev.action);
     let isCorrect = false;
-    if (prev.action === '买入' && priceChange > 0) isCorrect = true;
-    else if (prev.action === '卖出' && priceChange < 0) isCorrect = true;
-    else if (prev.action === '观望') isCorrect = Math.abs(priceChange) < 3;
+    if (dir === 'buy' && priceChange > 0) isCorrect = true;
+    else if (dir === 'sell' && priceChange < 0) isCorrect = true;
+    else if (dir === 'watch') isCorrect = Math.abs(priceChange) < 3;
     total++;
     if (isCorrect) correct++;
     if (details.length < 5) {
@@ -3334,9 +3543,9 @@ function calcSignalAccuracy(code) {
   return {
     accuracy: Math.round(correct / total * 100),
     total, correct,
-    buyCount: records.filter(r => r.action === '买入').length,
-    sellCount: records.filter(r => r.action === '卖出').length,
-    watchCount: records.filter(r => r.action === '观望').length,
+    buyCount: records.filter(r => signalDirection(r.action) === 'buy').length,
+    sellCount: records.filter(r => signalDirection(r.action) === 'sell').length,
+    watchCount: records.filter(r => signalDirection(r.action) === 'watch').length,
     details: details.reverse(),
   };
 }
@@ -3376,7 +3585,7 @@ function renderSignalAccuracy(code) {
     const cls = d.correct ? 'up' : 'down';
     const sign = d.change > 0 ? '+' : '';
     return `<div style="padding:2px 0">
-      <span style="color:${d.action === '买入' ? C.up : d.action === '卖出' ? C.down : '#f0b90b'}">${d.action}</span>
+      <span style="color:${signalDirection(d.action)==='buy' ? C.up : signalDirection(d.action)==='sell' ? C.down : '#f0b90b'}">${d.action}</span>
       @ ${d.price.toFixed(2)} → 后续 <span class="${cls}">${sign}${d.change.toFixed(1)}%</span>
       <span style="color:${d.correct ? C.up : C.down}">${d.correct ? '✓' : '✗'}</span>
     </div>`;
@@ -3404,9 +3613,9 @@ function checkSignalChange(code, name, action, score, price) {
 
 function showToast(name, code, oldAction, newAction, price) {
   const container = document.getElementById('toast-container');
-  const cls = newAction === '买入' ? 'buy' : newAction === '卖出' ? 'sell' : '';
-  const oldColor = oldAction === '买入' ? C.up : oldAction === '卖出' ? C.down : '#f0b90b';
-  const newColor = newAction === '买入' ? C.up : newAction === '卖出' ? C.down : '#f0b90b';
+  const cls = signalDirection(newAction) === 'buy' ? 'buy' : signalDirection(newAction) === 'sell' ? 'sell' : '';
+  const oldColor = signalDirection(oldAction) === 'buy' ? C.up : signalDirection(oldAction) === 'sell' ? C.down : '#f0b90b';
+  const newColor = signalDirection(newAction) === 'buy' ? C.up : signalDirection(newAction) === 'sell' ? C.down : '#f0b90b';
   const toast = document.createElement('div');
   toast.className = `toast ${cls}`;
   toast.onclick = () => removeToast(toast);
