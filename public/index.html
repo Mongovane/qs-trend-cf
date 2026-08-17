@@ -945,6 +945,18 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
       <div class="cl-body" id="chanlun-body"></div>
     </div>
 
+    <!-- 筹码分布 -->
+    <div class="signal-card" id="chip-card" style="display:none">
+      <div class="sc-header" onclick="toggleCard(this)"><span class="sc-arrow">▼</span>筹码分布</div>
+      <div id="chip-body" class="cl-body"></div>
+    </div>
+
+    <!-- 板块对比 -->
+    <div class="signal-card" id="sector-card" style="display:none">
+      <div class="sc-header" onclick="toggleCard(this)"><span class="sc-arrow">▼</span>板块对比</div>
+      <div id="sector-body" class="cl-body"></div>
+    </div>
+
     <!-- 信号准确率 -->
     <div class="signal-card signal-accuracy-card" id="accuracy-card" data-card="accuracy">
       <div class="sc-header" onclick="toggleCard(this)"><span class="sc-arrow">▼</span>信号准确率</div>
@@ -1506,7 +1518,7 @@ function renderKline(rawKlines, signal) {
       {
         name: 'K线', type: 'candlestick', data: ohlc,
         itemStyle: { color: C.up, color0: C.down, borderColor: C.up, borderColor0: C.down },
-        markPoint: markPoints.length ? { data: markPoints, animation: false } : undefined,
+        markPoint: { data: [...markPoints, ...(window._candleMarkPoints || [])], animation: false },
         markLine: markLines.length ? { silent: true, animation: false, data: markLines, symbol: 'none' } : undefined,
       },
       { name: 'MA5', type: 'line', data: ma5, symbol: 'none', itemStyle: { color: C.ma5 }, lineStyle: { color: C.ma5, width: 1.1 } },
@@ -2838,6 +2850,8 @@ async function analyze(symbol) {
     renderKline(data.klines, data.signal);
     renderFlow(data.flows);
     renderSignal(data.signal);
+    renderChips(data);
+    renderSector(data);
     renderCanslim(data.signal.canslim);
     renderKeyLevels(data.signal.key_levels);
     renderMarket(data.signal, data.breadth);
@@ -3656,6 +3670,83 @@ function showEngineInfo() {
     <div class="scan-body">${html}</div></div>`;
   ov.querySelector('.scan-close').onclick = () => ov.remove();
   document.body.appendChild(ov);
+}
+
+// ===== 筹码分布渲染 =====
+function renderChips(data) {
+  const card = document.getElementById('chip-card');
+  const body = document.getElementById('chip-body');
+  const chips = data && data.chips;
+  if (!chips) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const pr = (chips.profitRatio * 100).toFixed(1);
+  const conc = (chips.concentration * 100).toFixed(1);
+  const prColor = chips.profitRatio > 0.7 ? 'var(--up)' : chips.profitRatio < 0.3 ? 'var(--down)' : 'var(--warn)';
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+      <div style="text-align:center;padding:8px 4px;background:var(--s2);border-radius:var(--r)">
+        <div style="font-size:18px;font-weight:700;color:${prColor};font-family:var(--num)">${pr}%</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:2px">获利比例</div>
+      </div>
+      <div style="text-align:center;padding:8px 4px;background:var(--s2);border-radius:var(--r)">
+        <div style="font-size:18px;font-weight:700;color:var(--t1);font-family:var(--num)">${chips.avgCost}</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:2px">平均成本</div>
+      </div>
+      <div style="text-align:center;padding:8px 4px;background:var(--s2);border-radius:var(--r)">
+        <div style="font-size:18px;font-weight:700;color:var(--t1);font-family:var(--num)">${conc}%</div>
+        <div style="font-size:9px;color:var(--t3);margin-top:2px">集中度</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;font-size:11px;color:var(--t2);margin-bottom:6px">
+      <span>90%成本 <b style="color:var(--t1)">${chips.cost90[0]}~${chips.cost90[1]}</b></span>
+      <span>筹码峰 <b style="color:var(--t1)">${chips.peakPrice}</b></span>
+    </div>
+    ${chips.resistancePrice ? `<div style="font-size:11px;color:var(--t2)">上方压力 <b style="color:var(--up)">${chips.resistancePrice}</b></div>` : ''}
+    ${chips.supportPrice ? `<div style="font-size:11px;color:var(--t2)">下方支撑 <b style="color:var(--down)">${chips.supportPrice}</b></div>` : ''}
+    ${chips.inDenseZone ? `<div style="font-size:11px;color:var(--down);margin-top:4px">✓ 当前价在筹码密集区内</div>` : ''}
+    <div style="font-size:10.5px;color:var(--t3);margin-top:6px;line-height:1.6">${chips.summary}</div>
+  `;
+}
+
+// ===== 板块对比渲染 =====
+function renderSector(data) {
+  const card = document.getElementById('sector-card');
+  const body = document.getElementById('sector-body');
+  const sector = data && data.sector;
+  if (!sector) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const pctColor = (v) => v > 0 ? 'var(--up)' : v < 0 ? 'var(--down)' : 'var(--t2)';
+  const fmtP = (v) => v != null ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '--';
+  const rsColor = sector.relativeStrength > 1.2 ? 'var(--up)' : sector.relativeStrength < 0.8 ? 'var(--down)' : 'var(--t1)';
+
+  body.innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+      <span style="font-size:14px;font-weight:700;color:var(--t1)">${sector.name}</span>
+      <span style="font-size:12px;color:${pctColor(sector.pct)};font-family:var(--num)">${fmtP(sector.pct)}</span>
+      ${sector.rank ? `<span style="font-size:11px;color:var(--t3);margin-left:auto">排名 <b style="color:var(--t1)">${sector.rank}</b>/${sector.totalSectors}</span>` : ''}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
+      <div style="text-align:center;padding:6px 4px;background:var(--s2);border-radius:var(--r)">
+        <div style="font-size:13px;font-weight:650;color:${pctColor(sector.pct5d)};font-family:var(--num)">${fmtP(sector.pct5d)}</div>
+        <div style="font-size:9px;color:var(--t3)">5日</div>
+      </div>
+      <div style="text-align:center;padding:6px 4px;background:var(--s2);border-radius:var(--r)">
+        <div style="font-size:13px;font-weight:650;color:${pctColor(sector.pct20d)};font-family:var(--num)">${fmtP(sector.pct20d)}</div>
+        <div style="font-size:9px;color:var(--t3)">20日</div>
+      </div>
+      <div style="text-align:center;padding:6px 4px;background:var(--s2);border-radius:var(--r)">
+        <div style="font-size:13px;font-weight:650;color:${pctColor(sector.pct60d)};font-family:var(--num)">${fmtP(sector.pct60d)}</div>
+        <div style="font-size:9px;color:var(--t3)">60日</div>
+      </div>
+    </div>
+    ${sector.relativeStrength != null ? `
+    <div style="font-size:12px;color:var(--t2)">
+      个股相对行业强度 <b style="color:${rsColor};font-size:15px;font-family:var(--num)">${sector.relativeStrength}</b>
+      <span style="font-size:10px;color:var(--t3);margin-left:4px">${sector.relativeStrength > 1 ? '跑赢行业' : '跑输行业'}</span>
+    </div>` : ''}
+    ${sector.leader ? `<div style="font-size:11px;color:var(--t3);margin-top:6px">行业领涨 <span style="color:var(--t1)">${sector.leader}</span></div>` : ''}
+  `;
 }
 
 // ===== 信号准确率统计 =====

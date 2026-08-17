@@ -5,6 +5,7 @@ import {
 import { fetchIndexKline, fetchMarketBreadth } from '../../src/data/fetcher';
 import { analyzeSymbol, buildAnalyzeResponse, buildMarketEnv } from '../../src/analysis/pipeline';
 import type { Kline, MarketBreadth } from '../../src/types';
+import { fetchSectorComparison } from '../../src/data/sector';
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) =>
   guard(async () => {
@@ -25,5 +26,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) =>
     );
     if (!outcome.ok) return json({ error: outcome.error });
 
-    return json(buildAnalyzeResponse(outcome, buildMarketEnv(indexKlines, breadth), breadth));
+    // 板块对比（不阻塞主流程，失败降级为 null）
+    let sector = null;
+    try {
+      const kl = outcome.klines;
+      const pct20 = kl.length >= 21
+        ? ((kl[kl.length-1].close - kl[kl.length-21].close) / kl[kl.length-21].close) * 100
+        : undefined;
+      sector = await fetchSectorComparison(symbol, pct20, env);
+    } catch { /* 板块接口失败不影响主分析 */ }
+
+    const resp = buildAnalyzeResponse(outcome, buildMarketEnv(indexKlines, breadth), breadth);
+    (resp as Record<string, unknown>).sector = sector;
+    return json(resp);
   });

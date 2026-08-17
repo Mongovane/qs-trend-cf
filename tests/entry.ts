@@ -12,3 +12,5 @@ export { analyzeChanlunMinute, signalsToDict } from '../src/analysis/chanlunMinu
 export { applySignalOptimization, applyBreadthToMScore, toOptimizable } from '../src/analysis/optimizer';
 export { pyRound, pyInt, floorDiv, fmt } from '../src/util/pynum';
 export { checkTradability, checkRegime, buildRealisticPlan, DEFAULT_FILTER_PARAMS } from '../src/analysis/entryFilters';
+export { calcChipDistribution, chipSummary } from '../src/analysis/chipDistribution';
+export { detectCandlePatterns } from '../src/analysis/candlePatterns';

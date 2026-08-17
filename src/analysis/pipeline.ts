@@ -9,6 +9,9 @@ import { runAnalysis, type ScoringProfile } from '../analysis/signalEngine';
 import { applyBreadthToMScore, applySignalOptimization, toOptimizable } from '../analysis/optimizer';
 import { fmt, fmtSigned } from '../util/pynum';
 import { elapsedTradingMinutes } from '../util/tradingClock';
+import { calcChipDistribution, chipSummary } from './chipDistribution';
+import { detectCandlePatterns } from './candlePatterns';
+
 
 export interface AnalyzeOptions {
   symbol: string;
@@ -118,5 +121,28 @@ export function buildAnalyzeResponse(
     market_env: marketEnv,
     breadth: breadth ?? null,
     analyzed_at: new Date().toISOString(),
+    // 筹码分布
+    chips: (() => {
+      const chip = calcChipDistribution(klines, 120, quote?.price);
+      if (!chip) return null;
+      return {
+        profitRatio: chip.profitRatio,
+        avgCost: chip.avgCost,
+        cost90: chip.cost90,
+        cost70: chip.cost70,
+        concentration: chip.concentration,
+        peakPrice: chip.peakPrice,
+        inDenseZone: chip.inDenseZone,
+        resistancePrice: chip.resistancePrice,
+        supportPrice: chip.supportPrice,
+        summary: chipSummary(chip, quote?.price || klines[klines.length - 1].close),
+        distribution: chip.distribution,
+      };
+    })(),
+    // K线形态
+    candlePatterns: detectCandlePatterns(klines).map(p => ({
+      name: p.name, label: p.label, index: p.index, date: klines[p.index]?.date ?? '',
+      direction: p.direction, reliability: p.reliability, description: p.description,
+    })),
   };
 }
