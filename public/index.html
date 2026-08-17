@@ -1189,7 +1189,33 @@ function calcMA(data, period) {
 }
 
 // ===== K线图 =====
-function renderKline(klines, signal) {
+/**
+ * 前端脏数据兜底。
+ * 后端 validateKlines 已加固，但缓存里可能还留着旧的脏数据，
+ * 且一根异常K线足以把 y 轴拉到 0、让整张图报废，代价太大，因此双保险。
+ * A股单日振幅有涨跌停上限，high/low 比值不可能超过 2.2。
+ */
+function sanitizeKlines(klines) {
+  if (!Array.isArray(klines)) return [];
+  const out = [];
+  let dropped = 0;
+  for (const k of klines) {
+    const ok = k && k.close > 0 && k.high > 0 && k.low > 0 && k.open > 0
+      && k.high >= k.low && k.high / k.low <= 2.2
+      && (!out.length || (k.close / out[out.length - 1].close <= 2.5
+                          && k.close / out[out.length - 1].close >= 0.4));
+    if (ok) out.push(k); else dropped++;
+  }
+  if (dropped) {
+    console.warn(`[chart] 已过滤 ${dropped} 根异常K线`);
+    showToast(`数据源返回 ${dropped} 根异常K线，已自动剔除`, '');
+  }
+  return out;
+}
+
+function renderKline(rawKlines, signal) {
+  const klines = sanitizeKlines(rawKlines);
+  if (!klines.length) { console.warn('[chart] 无有效K线'); return; }
   _klineData = klines;
   _lastSignalData = signal;
   const dates = klines.map(k => k.date);

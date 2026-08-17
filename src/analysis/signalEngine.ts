@@ -223,11 +223,13 @@ export function runAnalysis(
   indexKlines?: readonly Kline[] | null,
   profile: ScoringProfile = 'enhanced',
   filterParams: EntryFilterParams = DEFAULT_FILTER_PARAMS,
+  /** 盘中已开市分钟数；回测与 legacy 不传 */
+  elapsedMinutes?: number,
 ): SignalEngineResult {
   const isLegacy = profile === 'legacy';
   const trend = analyzeTrend(klines, isLegacy);
   const patterns = analyzePatterns(klines, isLegacy);
-  const vp = analyzeVolumePrice(klines, quote, flows);
+  const vp = analyzeVolumePrice(klines, quote, flows, isLegacy ? undefined : elapsedMinutes);
   const breakouts = analyzeBreakout(klines);
   const canslim = analyzeCanslim(klines, quote, flows, indexKlines);
   const technical: TechnicalResult | null =
@@ -344,7 +346,7 @@ export function runAnalysis(
   if (!isLegacy) {
     const code = quote?.symbol ?? '';
     const nm = quote?.name ?? '';
-    const trad = checkTradability(code, nm, klines, quote, flows, filterParams);
+    const trad = checkTradability(code, nm, klines, quote, flows, filterParams, elapsedMinutes);
     const regime = checkRegime(indexKlines, filterParams);
     const findings = [...trad.findings];
     if (regime) findings.push(regime);

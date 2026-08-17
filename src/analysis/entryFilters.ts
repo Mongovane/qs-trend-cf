@@ -27,6 +27,7 @@ import type { FundFlow, Kline, PatternResult, Quote, BreakoutResult } from '../t
 import { smaSeries } from './indicators';
 import { atrSeries } from './technicalIndicators';
 import { fmt, pyRound } from '../util/pynum';
+import { FULL_SESSION_MINUTES } from '../util/tradingClock';
 
 export interface EntryFilterParams {
   /** 涨幅接近涨停的比例阈值（占涨跌停幅度），超过视为买不到 */
@@ -103,6 +104,7 @@ export function checkTradability(
   quote?: Quote | null,
   flows?: readonly FundFlow[] | null,
   params: EntryFilterParams = DEFAULT_FILTER_PARAMS,
+  elapsedMinutes?: number,
 ): TradabilityResult {
   const findings: FilterFinding[] = [];
   if (!klines.length) return { tradable: false, findings: [{ code: 'NO_DATA', severity: 'block', message: '无K线数据' }] };
@@ -191,8 +193,13 @@ export function checkTradability(
   if (klines.length >= 6) {
     const win = klines.slice(klines.length - 6, klines.length - 1);
     const avg5 = win.reduce((a, k) => a + k.volume, 0) / Math.max(1, win.length);
-    const vr = avg5 > 0 ? (quote?.volume || last.volume) / avg5 : 1;
-    if (vr < params.minVolumeRatio) {
+    const scale = elapsedMinutes && elapsedMinutes > 0
+      ? FULL_SESSION_MINUTES / Math.min(elapsedMinutes, FULL_SESSION_MINUTES)
+      : 1;
+    const vr = avg5 > 0 ? ((quote?.volume || last.volume) / avg5) * scale : 1;
+    // 盘中不足 30 分钟时样本太少，量比噪声极大，不做判定
+    const tooEarly = elapsedMinutes !== undefined && elapsedMinutes < 30;
+    if (vr < params.minVolumeRatio && !tooEarly) {
       findings.push({
         code: 'WEAK_VOLUME',
         severity: 'warn',

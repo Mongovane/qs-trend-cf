@@ -5,6 +5,7 @@
 import type { FundFlow, Kline, Quote, VolumePriceResult } from '../types';
 import { maDirection } from './indicators';
 import { clamp, fmt, pyRound, sum } from '../util/pynum';
+import { FULL_SESSION_MINUTES } from '../util/tradingClock';
 
 /** OBV（能量潮）序列。 */
 function calcObv(klines: readonly Kline[]): number[] {
@@ -109,6 +110,11 @@ export function analyzeVolumePrice(
   klines: readonly Kline[],
   quote?: Quote | null,
   flows?: readonly FundFlow[] | null,
+  /**
+   * 盘中已开市分钟数。传入时按市场通行口径做时间归一化；
+   * 不传（回测、legacy 档位、历史复盘）则沿用全天口径，保证结果可复现。
+   */
+  elapsedMinutes?: number,
 ): VolumePriceResult {
   const [pattern, direction, base] = classifyPriceVolume(klines);
 
@@ -116,7 +122,15 @@ export function analyzeVolumePrice(
   if (quote && klines.length >= 6) {
     const window = klines.slice(klines.length - 6, klines.length - 1);
     const avg5 = sum(window.map((k) => k.volume)) / Math.max(1, window.length);
-    volumeRatio = avg5 ? pyRound(quote.volume / avg5, 2) : 1.0;
+    if (avg5) {
+      const raw = quote.volume / avg5;
+      // 时间归一化：把「已成交量」折算成全天速率再比较，
+      // 否则开盘 5 分钟时任何股票的量比都是真实值的 1/48
+      const scale = elapsedMinutes && elapsedMinutes > 0
+        ? FULL_SESSION_MINUTES / Math.min(elapsedMinutes, FULL_SESSION_MINUTES)
+        : 1;
+      volumeRatio = pyRound(raw * scale, 2);
+    }
   }
 
   const turnover =

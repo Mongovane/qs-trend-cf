@@ -8,6 +8,7 @@ import type { FetchEnv } from '../data/http';
 import { runAnalysis, type ScoringProfile } from '../analysis/signalEngine';
 import { applyBreadthToMScore, applySignalOptimization, toOptimizable } from '../analysis/optimizer';
 import { fmt, fmtSigned } from '../util/pynum';
+import { elapsedTradingMinutes } from '../util/tradingClock';
 
 export interface AnalyzeOptions {
   symbol: string;
@@ -51,7 +52,11 @@ export async function analyzeSymbol(opts: AnalyzeOptions, env?: FetchEnv): Promi
     fetchFundFlow(symbol, 30, env),
   ]);
 
-  const result = runAnalysis(klines, quote, flows, opts.indexKlines ?? null, profile);
+  // 实盘路径传入交易时钟，使量比按市场通行口径做时间归一化
+  const result = runAnalysis(
+    klines, quote, flows, opts.indexKlines ?? null, profile,
+    undefined, elapsedTradingMinutes(),
+  );
   const signal = toOptimizable(result);
 
   applyBreadthToMScore(signal, opts.breadth, !opts.lite);

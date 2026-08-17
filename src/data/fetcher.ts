@@ -152,16 +152,53 @@ async function enrichFromEastmoney(symbol: string, count: number, klines: Kline[
   }
 }
 
-/** 数据校验：过滤异常 K 线（与原版一致）。 */
+/**
+ * 数据校验。
+ *
+ * 原实现只检查**结构一致性**（high≥low、low≤close 等）和一个绝对上限，
+ * 完全没有**量级合理性**检查。于是一根 low=0.5 / high=750 / close=743 的
+ * 脏数据能通过全部 8 项检查：high≥low 成立、low≤close 成立、close<10000 成立。
+ *
+ * 后果是灾难性的：
+ *   1. ECharts 的 y 轴被迫从 0 起画，真实价格结构被压进顶部 1/4，图表报废
+ *   2. ATR / N值 / 通道下轨 / 止损全部被这一根污染
+ *   3. 而界面不会有任何异常提示，因为每一项校验都"通过"了
+ *
+ * A股有涨跌幅限制，单日振幅存在物理上限：
+ *   主板 ±10% → high/low ≤ 1.222   双创 ±20% → ≤ 1.5   北交所 ±30% → ≤ 1.857
+ * 取 2.2 作为统一上限（留出复权、新股首日、长期停牌复牌的余量）。
+ */
+const MAX_INTRADAY_RANGE_RATIO = 2.2;
+/** 相邻两日收盘价的最大跳变倍数。超过说明复权口径断裂或数据错行。 */
+const MAX_GAP_RATIO = 2.5;
+
 function validateKlines(klines: readonly Kline[]): Kline[] {
   const out: Kline[] = [];
+  let dropped = 0;
   for (const k of klines) {
-    if (k.close > 0 && k.high > 0 && k.low > 0 && k.open > 0
+    // ── 原有的结构一致性检查 ──
+    const structOk = k.close > 0 && k.high > 0 && k.low > 0 && k.open > 0
       && k.high >= k.low && k.high >= k.close && k.high >= k.open
       && k.low <= k.close && k.low <= k.open
-      && k.close < 10000) {
-      out.push(k);
+      && k.close < 100000;
+    if (!structOk) { dropped += 1; continue; }
+
+    // ── 新增：单日振幅不可能超过涨跌停允许的范围 ──
+    if (k.high / k.low > MAX_INTRADAY_RANGE_RATIO) { dropped += 1; continue; }
+
+    // ── 新增：相邻日跳变检查（复权断裂 / 数据错行）──
+    if (out.length) {
+      const prev = out[out.length - 1].close;
+      if (prev > 0) {
+        const r = k.close / prev;
+        if (r > MAX_GAP_RATIO || r < 1 / MAX_GAP_RATIO) { dropped += 1; continue; }
+      }
     }
+    out.push(k);
+  }
+  if (dropped > 0) {
+    // 上游脏数据不是罕见事件，留痕便于排查
+    console.warn(`[kline] 丢弃 ${dropped} 根异常K线（共 ${klines.length} 根）`);
   }
   return out;
 }
