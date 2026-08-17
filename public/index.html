@@ -41,38 +41,41 @@
    ========================================================================== */
 
 :root {
-  /* 表面 */
-  --bg: #0a0c0f;
-  --s1: #12161b;
-  --s2: #1a1f26;
-  --s3: #232932;
-  --line: rgba(255, 255, 255, 0.07);
-  --line-2: rgba(255, 255, 255, 0.13);
+  /* 表面 —— OKX 暖灰基底，比冷蓝灰更沉稳 */
+  --bg: #0b0e11;
+  --s1: #141518;
+  --s2: #1c1e22;
+  --s3: #26282d;
+  --line: rgba(255, 255, 255, 0.04);
+  --line-2: rgba(255, 255, 255, 0.08);
 
   /* 文本 */
-  --t1: #eaedf2;
-  --t2: #8b95a3;
-  --t3: #59636f;
+  --t1: #eaecef;
+  --t2: #848e9c;
+  --t3: #5e6673;
 
   /* 市场方向（A股口径：红涨绿跌） */
   --up: #f6465d;
-  --up-2: #ff7a8c;
-  --up-soft: rgba(246, 70, 93, 0.11);
-  --up-line: rgba(246, 70, 93, 0.3);
+  --up-2: #ff707e;
+  --up-soft: rgba(246, 70, 93, 0.10);
+  --up-line: rgba(246, 70, 93, 0.22);
   --down: #0ecb81;
-  --down-2: #4ee3a5;
-  --down-soft: rgba(14, 203, 129, 0.11);
-  --down-line: rgba(14, 203, 129, 0.3);
+  --down-2: #2edc96;
+  --down-soft: rgba(14, 203, 129, 0.10);
+  --down-line: rgba(14, 203, 129, 0.22);
 
-  /* 交互 / 语义 */
-  --ac: #5b7cfa;
-  --ac-2: #8aa3ff;
-  --ac-soft: rgba(91, 124, 250, 0.12);
-  --ac-line: rgba(91, 124, 250, 0.35);
+  /* 交互 —— OKX 核心：交互元素不着色，用白/灰 */
+  --ac: #eaecef;
+  --ac-2: #ffffff;
+  --ac-soft: rgba(255, 255, 255, 0.06);
+  --ac-line: rgba(255, 255, 255, 0.15);
   --warn: #f0b90b;
-  --warn-soft: rgba(240, 185, 11, 0.1);
-  --warn-line: rgba(240, 185, 11, 0.25);
-  --data: #2dd4bf;
+  --warn-soft: rgba(240, 185, 11, 0.08);
+  --warn-line: rgba(240, 185, 11, 0.18);
+  --data: #b7bdc6;
+  /* CTA 买入绿 —— OKX 的主行动按钮是绿色（=买入语义） */
+  --cta: #0ecb81;
+  --cta-hover: #10e08f;
 
   /* 尺度 */
   --r-s: 5px;
@@ -110,7 +113,7 @@ body {
 
 button { font-family: inherit; }
 button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
-  outline: 2px solid var(--ac);
+  outline: 2px solid rgba(255,255,255,0.35);
   outline-offset: 1px;
 }
 
@@ -137,7 +140,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 }
 .logo::before {
   content: ""; width: 3px; height: 15px; border-radius: 2px;
-  background: linear-gradient(180deg, var(--up), var(--ac));
+  background: linear-gradient(180deg, var(--up), var(--cta));
 }
 
 /* ===== 搜索 ===== */
@@ -151,8 +154,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .search-wrap input:hover { background: var(--s3); }
 .search-wrap input:focus {
   outline: none; background: var(--s3);
-  border-color: var(--ac-line);
-  box-shadow: 0 0 0 3px var(--ac-soft);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.04);
 }
 .search-wrap input::placeholder { color: var(--t3); }
 .search-results {
@@ -196,7 +199,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 /* ===== 主按钮 ===== */
 .scan-btn {
   padding: 7px 15px; font-size: 12.5px; font-weight: 600;
-  background: var(--ac); color: #fff;
+  background: var(--cta); color: #0b0e11;
   border: none; border-radius: var(--r-s); cursor: pointer;
   white-space: nowrap; transition: filter 0.15s, transform 0.1s;
 }
@@ -230,7 +233,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   color: var(--t1); background: var(--s3);
   border-color: transparent; font-weight: 600;
 }
-.tb-btn.active { box-shadow: inset 0 -2px 0 var(--ac); }
+.tb-btn.active { box-shadow: inset 0 -2px 0 var(--t1); }
 
 .tb-sep { width: 1px; height: 14px; background: var(--line); margin: 0 7px; }
 .tb-label { font-size: 11px; color: var(--t3); font-family: var(--num); }
@@ -246,7 +249,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 
 .flow-toggle { margin-left: auto; display: flex; gap: 2px; }
 .ft-btn { padding: 3px 9px; font-size: 11px; }
-.ft-btn.ft-active { color: var(--ac-2); background: var(--ac-soft); }
+.ft-btn.ft-active { color: var(--t1); background: var(--ac-soft); }
 
 /* ===== 布局 ===== */
 .main {
@@ -293,7 +296,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   transition: border-color 0.18s;
 }
 .signal-card:hover, .summary-card:hover, .plan-card:hover, .chanlun-card:hover {
-  border-color: var(--line-2);
+  border-color: rgba(255,255,255,0.06);
 }
 .sc-header {
   display: flex; align-items: center; gap: 7px;
@@ -319,10 +322,10 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   font-size: 13px; font-weight: 700; padding: 5px 12px;
   border-radius: 999px; letter-spacing: 0.02em;
 }
-.sum-badge-buy { background: var(--up-soft); color: var(--up-2); border: 1px solid var(--up-line); }
+.sum-badge-buy { background: var(--up-soft); color: var(--up); border: 1px solid var(--up-line); }
 .sum-badge-sell { background: var(--down-soft); color: var(--down-2); border: 1px solid var(--down-line); }
 .sum-badge-watch { background: var(--s3); color: var(--t2); border: 1px solid var(--line-2); }
-.sum-badge-cautious { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-line); }
+.sum-badge-cautious { background: rgba(240,185,11,0.06); color: #f0b90b; border: 1px solid rgba(240,185,11,0.14); }
 
 .sum-strength { font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: var(--r-s); background: var(--s2); }
 .sum-strength.strong { color: var(--up-2); }
@@ -410,7 +413,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .sig-risk { background: var(--warn-soft); color: var(--warn); border-left-color: var(--warn); }
 .sig-core-tag {
   font-size: 9px; font-weight: 700; padding: 1px 5px; margin-left: 6px;
-  border-radius: 3px; background: var(--ac); color: #fff;
+  border-radius: 3px; background: rgba(255,255,255,0.12); color: var(--t1);
   letter-spacing: 0.04em; vertical-align: 1px;
 }
 
@@ -441,14 +444,18 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   background: var(--s2); border-radius: var(--r-s);
 }
 .kl-label { color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kl-val { color: var(--data); font-weight: 650; flex-shrink: 0; }
+.kl-val { color: var(--t1); font-weight: 650; flex-shrink: 0; }
 
 /* ===== 操作计划 ===== */
 .plan-body { padding: 11px 13px; }
 .plan-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 7px 0; border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line);
 }
+/* 值过长时改为上下排，避免「钱」「盈亏比」这类词被孤立到下一行 */
+.plan-row.stacked { flex-direction: column; align-items: stretch; gap: 3px; }
+.plan-row.stacked .plan-val { text-align: left; font-size: 12px; line-height: 1.55; }
+.plan-val { text-align: right; }
 .plan-row:last-child { border-bottom: none; }
 .plan-label { font-size: 12px; color: var(--t2); }
 .plan-val { font-size: 13px; font-weight: 650; color: var(--t1); }
@@ -471,7 +478,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   font-size: 11px; color: var(--t2); line-height: 1.6;
   padding: 8px 9px; margin-top: 8px;
   background: var(--s2); border-radius: var(--r-s);
-  border-left: 2px solid var(--ac);
+  border-left: 2px solid var(--t3);
 }
 .plan-rr {
   display: flex; gap: 14px; margin-top: 8px; padding-top: 8px;
@@ -546,7 +553,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   padding: 0 4px; border-radius: 999px;
   min-width: 14px; text-align: center; line-height: 14px;
 }
-.wc-badge { background: var(--ac); }
+.wc-badge { background: var(--cta); color: #0b0e11; }
 .wc-btn .wc-change-badge { background: var(--up); animation: pulse 1.6s ease infinite; }
 
 .wp-panel {
@@ -569,7 +576,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .wp-tab:hover { color: var(--t1); background: var(--s2); }
 .wp-tab.active { color: var(--t1); background: var(--s3); font-weight: 650; }
 .wp-tab .wp-tab-count { font-size: 10px; color: var(--t3); margin-left: 3px; font-family: var(--num); }
-.wp-tab.active .wp-tab-count { color: var(--ac-2); }
+.wp-tab.active .wp-tab-count { color: var(--t1); }
 
 .wp-list { flex: 1; overflow-y: auto; padding: 5px; }
 .wp-item {
@@ -656,7 +663,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .scan-bar-bg { width: 100%; height: 6px; background: var(--s3); border-radius: 999px; overflow: hidden; }
 .scan-bar-fill {
   height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--ac), var(--data));
+  background: linear-gradient(90deg, var(--cta), #2edc96);
   transition: width 0.4s var(--ease);
   position: relative; overflow: hidden;
 }
@@ -680,14 +687,14 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .scan-table tr { transition: background 0.1s; }
 .scan-table tbody tr:hover td { background: var(--s2); }
 .scan-rank { color: var(--t3); font-weight: 650; font-family: var(--num); }
-.scan-table tbody tr:nth-child(-n+3) .scan-rank { color: var(--ac-2); }
+.scan-table tbody tr:nth-child(-n+3) .scan-rank { color: var(--cta); }
 .scan-action-buy { color: var(--up); font-weight: 650; }
 .scan-action-strong { color: var(--up); font-weight: 700; }
 .scan-action-caution { color: var(--warn); font-weight: 650; }
 .scan-action-watch { color: var(--t3); }
-.scan-combined { font-weight: 700; color: var(--t1); }
+  .scan-combined { font-weight: 700; color: var(--t1); }
 .scan-analyze-btn { padding: 4px 10px; font-size: 11px; background: var(--s2); }
-.scan-analyze-btn:hover { background: var(--ac-soft); color: var(--ac-2); }
+.scan-analyze-btn:hover { background: rgba(14,203,129,0.1); color: var(--cta); }
 .scan-empty { text-align: center; padding: 48px; color: var(--t3); font-size: 13px; line-height: 1.8; }
 
 /* ===== 加载态：骨架屏取代 spinner ===== */
@@ -721,7 +728,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .stt-formula {
   color: var(--ac-2); font-family: var(--num); font-size: 11px;
   margin: 5px 0; white-space: pre-wrap;
-  padding: 6px 8px; background: rgba(91, 124, 250, 0.08);
+  padding: 6px 8px; background: rgba(255, 255, 255, 0.04);
   border-radius: var(--r-s);
 }
 .stt-desc { color: var(--t2); margin-top: 5px; }
@@ -734,7 +741,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .toast {
   background: rgba(26, 31, 38, 0.97);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--line-2); border-left: 3px solid var(--ac);
+  border: 1px solid var(--line-2); border-left: 3px solid var(--t3);
   border-radius: var(--r); padding: 11px 15px; font-size: 12.5px; color: var(--t1);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6); max-width: 360px;
   animation: toastIn 0.32s var(--ease);
@@ -763,7 +770,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   background: var(--s3); border-radius: 999px;
   border: 2px solid transparent; background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover { background: #333b46; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #3a3d42; background-clip: padding-box; }
 ::-webkit-scrollbar-corner { background: transparent; }
 
 /* ===== 无障碍 ===== */
@@ -982,7 +989,7 @@ const C = {
   down: '#0ecb81',     // 跌-绿
   ma5: '#f0b90b',      // MA5-金
   ma10: '#c661ff',     // MA10-紫
-  ma20: '#5b7cfa',     // MA20-蓝
+  ma20: '#5470c6',     // MA20-灰蓝(柔和)
   ma60: '#2dd4bf',     // MA60-青
   text: '#8b95a3',
   textDim: '#59636f',
@@ -1021,7 +1028,7 @@ const AXIS_COMMON = {
 const QS_THEME = {
   // 调色板顺序即 MA5/MA10/MA20/MA60 —— tooltip 的 p.color 取自此处，
   // 必须与 series.lineStyle 一致，否则图例与线条颜色对不上（原实现即如此）。
-  color: ['#f0b90b', '#c661ff', '#5b7cfa', '#2dd4bf', '#2dd4bf', '#f6465d', '#0ecb81'],
+  color: ['#f0b90b', '#c661ff', '#5470c6', '#72c0b4', '#2dd4bf', '#f6465d', '#0ecb81'],
   backgroundColor: 'transparent',
   textStyle: { fontFamily: FONT, color: '#8b95a3' },
   title: { textStyle: { color: '#eaedf2', fontWeight: 600 } },
@@ -1059,19 +1066,19 @@ const QS_THEME = {
   dataZoom: {
     borderColor: 'transparent',
     backgroundColor: 'rgba(255,255,255,0.02)',
-    fillerColor: 'rgba(91,124,250,0.13)',
-    handleStyle: { color: '#5b7cfa', borderColor: '#5b7cfa' },
-    moveHandleStyle: { color: 'rgba(91,124,250,0.6)' },
+    fillerColor: 'rgba(255,255,255,0.06)',
+    handleStyle: { color: '#5e6673', borderColor: '#5e6673' },
+    moveHandleStyle: { color: 'rgba(255,255,255,0.2)' },
     dataBackground: {
       lineStyle: { color: 'rgba(255,255,255,0.14)', width: 1 },
       areaStyle: { color: 'rgba(255,255,255,0.04)' },
     },
     selectedDataBackground: {
-      lineStyle: { color: '#5b7cfa', width: 1 },
+      lineStyle: { color: '#5470c6', width: 1 },
       areaStyle: { color: 'rgba(91,124,250,0.10)' },
     },
     textStyle: { color: '#59636f', fontSize: 10, fontFamily: MONO },
-    emphasis: { handleStyle: { borderColor: '#8aa3ff' } },
+    emphasis: { handleStyle: { borderColor: '#b7bdc6' } },
   },
 };
 
@@ -1342,7 +1349,7 @@ function renderKline(rawKlines, signal) {
   if (tp.entry_price > 0 && signal.action && signal.action.includes('买入')) {
     markLines.push({ yAxis: tp.entry_price, lineStyle: { color: '#f0b90b', type: 'solid', width: 1, opacity: 0.9 },
       label: { formatter: `计划买入 ${tp.entry_price.toFixed(2)}`, color: '#1a1200', fontSize: 9.5,
-        fontWeight: 'bold', backgroundColor: '#f0b90b', padding: [3, 5], borderRadius: 3, position: 'insideEndBottom' } });
+        fontWeight: 'bold', backgroundColor: 'rgba(240,185,11,0.9)', padding: [3, 5], borderRadius: 3, position: 'insideEndBottom' } });
     _signalLines.push({
       value: tp.entry_price,
       title: '计划买入价（当前）',
@@ -1371,9 +1378,9 @@ function renderKline(rawKlines, signal) {
         const targetLabel = pBearish
           ? `下行目标 ${p.target_price.toFixed(2)}`
           : `形态目标 ${p.target_price.toFixed(2)}`;
-        markLines.push({ yAxis: p.target_price, lineStyle: { color: pBearish ? C.down : '#5b7cfa', type: [5, 4], width: 1, opacity: 0.85 },
+        markLines.push({ yAxis: p.target_price, lineStyle: { color: pBearish ? C.down : '#848e9c', type: [5, 4], width: 1, opacity: 0.85 },
           label: { formatter: targetLabel, color: '#fff', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
-            backgroundColor: pBearish ? C.down : '#5b7cfa', padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
+            backgroundColor: pBearish ? C.down : '#5e6673', padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
         _signalLines.push({
           value: p.target_price,
           title: `${p.name} 目标价`,
@@ -1384,6 +1391,75 @@ function renderKline(rawKlines, signal) {
         });
       }
     }
+  }
+
+  // ── 标签避让：价位接近的线交替左右分列，超量的降级为无标签细线 ──
+  {
+    const PRIORITY = { '计划买入': 0, '计划止损': 1, '形态目标': 2, '下行目标': 2,
+                       '海龟止损': 5, '历史突破': 6, '历史做空': 7 };
+    const keyOf = (ml) => {
+      const f = (ml.label && ml.label.formatter) || '';
+      for (const k of Object.keys(PRIORITY)) if (f.startsWith(k)) return k;
+      return '';
+    };
+    // a) 方向过滤：建议买入时，做空侧的历史线只是噪声
+    const filtered = markLines.filter((ml) => {
+      const k = keyOf(ml);
+      if (!isBearish && k === '历史做空') return false;
+      if (isBearish && k === '历史突破') return false;
+      return true;
+    });
+    // b) 重要度排序 + 限量（最多 5 条带标签）
+    filtered.sort((a, b) => (PRIORITY[keyOf(a)] ?? 9) - (PRIORITY[keyOf(b)] ?? 9));
+    const LABEL_CAP = 5;
+    filtered.forEach((ml, i) => {
+      if (i >= LABEL_CAP && ml.label) {
+        ml.label = { show: false };
+        ml.lineStyle = { ...(ml.lineStyle || {}), opacity: 0.28 };
+      }
+    });
+    // c) 纵向过近的标签左右分列
+    const priceRange = klines.length
+      ? Math.max(...klines.map(k => k.high)) - Math.min(...klines.map(k => k.low))
+      : 0;
+    const MIN_GAP = priceRange * 0.045;
+    const labeled = filtered.filter((m) => m.label && m.label.show !== false)
+      .sort((a, b) => b.yAxis - a.yAxis);
+    let lastY = Infinity, flip = false;
+    for (const ml of labeled) {
+      if (lastY - ml.yAxis < MIN_GAP) {
+        flip = !flip;
+        if (flip) {
+          const pos = ml.label.position || 'insideEndTop';
+          ml.label.position = pos.replace('End', 'Start');
+        }
+      } else {
+        flip = false;
+      }
+      lastY = ml.yAxis;
+    }
+    markLines.length = 0;
+    markLines.push(...filtered);
+  }
+
+  // ── Y 轴范围：以 K 线为准，markLine 偏离过远时不参与，避免整段画布被拉空 ──
+  let yLo, yHi;
+  {
+    const lo = Math.min(...klines.map(k => k.low));
+    const hi = Math.max(...klines.map(k => k.high));
+    const span = hi - lo || hi * 0.1;
+    // 价格线只有落在 K 线区间外 25% 以内才纳入，超出则任其画到可视区外
+    let mlLo = lo, mlHi = hi;
+    for (const ml of markLines) {
+      const v = ml.yAxis;
+      if (!Number.isFinite(v)) continue;
+      if (v >= lo - span * 0.25 && v <= hi + span * 0.25) {
+        mlLo = Math.min(mlLo, v);
+        mlHi = Math.max(mlHi, v);
+      }
+    }
+    yLo = Math.max(0, mlLo - (mlHi - mlLo) * 0.05);
+    yHi = mlHi + (mlHi - mlLo) * 0.07;
   }
 
   const total = dates.length;
@@ -1401,8 +1477,14 @@ function renderKline(rawKlines, signal) {
     },
     yAxis: {
       scale: true,
+      // 显式数值范围。不用函数式 min/max —— ECharts 在 markLine 参与统计时
+      // 会传入异常的 v.min/v.max，导致轴上出现 99999999 这类脏刻度。
+      min: yLo, max: yHi,
       axisLine: { show: false },
-      axisLabel: { color: C.textDim, fontSize: 11 },
+      axisLabel: {
+        color: C.textDim, fontSize: 11,
+        showMinLabel: false, showMaxLabel: false,   // 首尾是计算出的非整数，无信息量
+      },
       splitLine: { lineStyle: { color: C.grid } },
     },
     grid: { left: 60, right: 50, top: 30, bottom: 50 },
@@ -1458,11 +1540,11 @@ function renderKline(rawKlines, signal) {
       { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: 'slider', start: ds, end: 100, height: 28, bottom: 8,
         borderColor: 'transparent', backgroundColor: 'rgba(255,255,255,0.02)',
-        fillerColor: 'rgba(91,124,250,0.13)',
-        selectedDataBackground: { lineStyle: { color: '#5b7cfa' }, areaStyle: { color: 'rgba(91,124,250,0.10)' } },
+        fillerColor: 'rgba(255,255,255,0.06)',
+        selectedDataBackground: { lineStyle: { color: '#5470c6' }, areaStyle: { color: 'rgba(91,124,250,0.10)' } },
         dataBackground: { lineStyle: { color: 'rgba(255,255,255,0.14)' }, areaStyle: { color: 'rgba(255,255,255,0.04)' } },
-        handleStyle: { color: '#5b7cfa', borderColor: '#5b7cfa' },
-        moveHandleStyle: { color: '#5b7cfa' },
+        handleStyle: { color: '#5e6673', borderColor: '#5e6673' },
+        moveHandleStyle: { color: '#5470c6' },
         textStyle: { color: C.textDim, fontSize: 10 },
         brushSelect: false,
       },
@@ -1474,7 +1556,7 @@ function renderKline(rawKlines, signal) {
     backgroundColor: C.bg,
     animation: false,
     xAxis: { type: 'category', data: dates, show: false },
-    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9 }, splitLine: { lineStyle: { color: C.grid } } },
+    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
     grid: { left: 60, right: 50, top: 5, bottom: 5 },
     series: [{
       type: 'bar', data: klines.map(k => ({
@@ -2066,7 +2148,7 @@ function renderMinute(data, chanlunData) {
     backgroundColor: C.bg,
     animation: false,
     xAxis: { type: 'category', data: times, show: false },
-    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9 }, splitLine: { lineStyle: { color: C.grid } } },
+    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
     grid: { left: 70, right: 60, top: 5, bottom: 5 },
     series: [{ type: 'bar', data: vc }],
     tooltip: { trigger: 'axis', formatter: p => p[0] ? `<div style="font-size:11px">${p[0].axisValue}<br/>量 ${fmtVol(p[0].value)}</div>` : '' },
@@ -2106,7 +2188,7 @@ function _renderDailyFlow(flows) {
     animation: false,
     legend: { data: ['主力净流入', '超大单'], textStyle: { color: C.textDim, fontSize: 10 }, top: 2, itemWidth: 12, itemHeight: 8 },
     xAxis: { type: 'category', data: dates, axisLabel: { color: C.textDim, fontSize: 9 }, axisLine: { lineStyle: { color: C.axis } } },
-    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9 }, splitLine: { lineStyle: { color: C.grid } } },
+    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
     grid: { left: 50, right: 20, top: 22, bottom: 18 },
     series: [
       { name: '主力净流入', type: 'bar', data: mainNet.map(v => ({ value: v, itemStyle: { color: v >= 0 ? C.up + '88' : C.down + '88' } })) },
@@ -2169,7 +2251,7 @@ function renderRealtimeFlow(data) {
     animation: false,
     legend: { data: ['主力净流入(累计)', '超大单(累计)'], textStyle: { color: C.textDim, fontSize: 10 }, top: 2, itemWidth: 12, itemHeight: 8 },
     xAxis: { type: 'category', data: times, axisLabel: { color: C.textDim, fontSize: 9, interval: 29 }, axisLine: { lineStyle: { color: C.axis } } },
-    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9 }, splitLine: { lineStyle: { color: C.grid } } },
+    yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
     grid: { left: 50, right: 20, top: 22, bottom: 18 },
     series: [
       { name: '主力净流入(累计)', type: 'line', data: mainNet,
@@ -2271,11 +2353,25 @@ function renderSummary(signal) {
       </div>`;
     }
     if (ex.plan) {
-      execHtml += `<div style="margin-top:6px;font-size:11px;color:var(--t2);line-height:1.7">
-        <span style="color:var(--t3)">止损依据</span> ${ex.plan.stopBasis}
-        <span style="margin-left:10px;color:var(--t3)">目标依据</span> ${ex.plan.targetBasis}<br>
-        <span style="color:var(--t3)">按单笔风险 ${(ex.plan.riskPct*100).toFixed(2)}% 反推权重</span>
-        <b style="color:var(--t1)">${(ex.plan.weight*100).toFixed(1)}%</b>
+      // 档位仓位（优化器按大盘环境给）与风险仓位（按单笔风险反推）取小
+      const advPct = /轻仓/.test(signal.position_advice || '') ? 0.25
+        : /半仓/.test(signal.position_advice || '') ? 0.5
+        : /空仓/.test(signal.position_advice || '') ? 0 : 1.0;
+      const finalW = Math.min(advPct, ex.plan.weight);
+      execHtml += `<div style="margin-top:8px;padding:8px 9px;background:var(--s2);border-radius:6px;
+                               font-size:11px;color:var(--t2);line-height:1.75">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="color:var(--t3)">实际建议仓位</span>
+          <b style="color:var(--t1);font-size:14px;font-family:var(--num)">${(finalW*100).toFixed(1)}%</b>
+        </div>
+        <div style="color:var(--t3);font-size:10.5px;margin-top:2px">
+          取小：档位 ${(advPct*100).toFixed(0)}% 与风险反推 ${(ex.plan.weight*100).toFixed(1)}%
+          （单笔风险 ${(ex.plan.riskPct*100).toFixed(2)}%）
+        </div>
+        <div style="margin-top:5px;padding-top:5px;border-top:1px solid var(--line)">
+          <span style="color:var(--t3)">止损依据</span> ${ex.plan.stopBasis}
+          <span style="margin-left:8px;color:var(--t3)">目标依据</span> ${ex.plan.targetBasis}
+        </div>
       </div>`;
     }
   }
@@ -2283,9 +2379,14 @@ function renderSummary(signal) {
   // 仓位建议
   let posHtml = '';
   if (posAdvice && posAdvice !== '空仓等待' && (isBuy || isCautious)) {
-    posHtml = `<div style="margin-top:6px;font-size:11.5px;color:var(--t2)">
-      <span style="color:var(--ac-2)">建议仓位</span> <span style="color:var(--t1);font-weight:600">${posAdvice}</span>
-      ${riskReward ? `<span style="margin-left:10px;color:var(--t3)">盈亏比 <b style="color:var(--t1)">${riskReward}</b></span>` : ''}
+    const advParts = String(posAdvice).split(/\s*[—－-]\s*/);
+    posHtml = `<div style="margin-top:8px;font-size:11.5px;color:var(--t2)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+        <span><span style="color:var(--ac-2)">建议仓位</span>
+          <b style="color:var(--t1)">${advParts[0]}</b></span>
+        ${riskReward ? `<span style="color:var(--t3);white-space:nowrap">盈亏比 <b style="color:var(--t1)">${riskReward}</b></span>` : ''}
+      </div>
+      ${advParts.length > 1 ? `<div style="color:var(--t3);font-size:11px;margin-top:2px">${advParts.slice(1).join(' ')}</div>` : ''}
     </div>`;
   }
 
@@ -2331,7 +2432,13 @@ function renderTradePlan(signal) {
   const target = plan.target_price || 0;
   const rr = plan.risk_reward_ratio || 0;
   const lossPct = plan.max_loss_pct || 0;
-  const pos = plan.position_size || '';
+  const posRaw = plan.position_size || signal.position_advice || '';
+  // 「轻仓(1/4) — 大盘偏空，严格控制仓位」拆成主值与理由，
+  // 否则在左标签右值的两栏里会把「钱」「盈亏比」这类词孤立到下一行
+  const posParts = String(posRaw).split(/\s*[—－-]\s*/);
+  const posMain = posParts[0] || posRaw;
+  const posReason = posParts.slice(1).join(' ');
+  const pos = posRaw;
   const period = plan.holding_period || '';
   const notes = plan.notes || '';
 
@@ -2387,8 +2494,9 @@ function renderTradePlan(signal) {
     </div>
     <div class="plan-row">
       <span class="plan-label">建议仓位 <span class="plan-tip">投多少钱</span></span>
-      <span class="plan-val" style="color:var(--ac-2)">${pos || signal.position_advice || ''}</span>
+      <span class="plan-val" style="color:var(--ac-2)">${posMain}</span>
     </div>
+    ${posReason ? `<div style="font-size:11px;color:var(--t2);padding:2px 0 6px;line-height:1.5">${posReason}</div>` : ''}
     <div class="plan-row">
       <span class="plan-label">持有周期 <span class="plan-tip">大概持多久</span></span>
       <span class="plan-val">${period}</span>
@@ -2612,6 +2720,14 @@ function updateQuote(q) {
     <span class="qb-pct ${cls}">${sign}${q.pct.toFixed(2)}%</span>
     <span class="qb-meta">量 ${fmtVol(q.volume)} · 换手 ${q.turnover.toFixed(1)}%</span>
   `;
+}
+
+/** 坐标轴用的数量缩写：12345 → 1.2万 */
+function fmtAxisNum(v) {
+  const n = Math.abs(v);
+  if (n >= 1e8) return (v / 1e8).toFixed(1).replace(/\.0$/, '') + '亿';
+  if (n >= 1e4) return (v / 1e4).toFixed(n >= 1e5 ? 0 : 1).replace(/\.0$/, '') + '万';
+  return String(v);
 }
 
 function fmtVol(v) {
@@ -3505,7 +3621,7 @@ function showEngineInfo() {
       六个模块各自算分 → 加权求和取整 → 五级重评 → 硬/软否决 → 仓位与盈亏比检查<br>
       <br>
       <b>当前权重（${prof} 档位）</b><br>
-      <span style="color:var(--ac-2);font-family:var(--num);font-size:11px">${w}</span><br>
+      <span style="color:var(--t1);font-family:var(--num);font-size:11px">${w}</span><br>
       <br>
       <b>本次各模块得分</b>
       <table style="font-size:12px;margin-top:4px">${rows}</table>
@@ -3803,19 +3919,22 @@ function renderScanResults(data) {
     const wAct = formatScanAction(r.weekly_action);
     const pct = (r.daily_pct || 0).toFixed(2);
     const pctColor = r.daily_pct > 0 ? 'var(--up)' : r.daily_pct < 0 ? 'var(--down)' : '#888';
-    html += `<tr>
+    const pctBg = r.daily_pct > 0
+      ? `background:linear-gradient(90deg, rgba(246,70,93,${Math.min(0.25, Math.abs(r.daily_pct)/20)}) 0%, transparent 100%)`
+      : r.daily_pct < 0
+        ? `background:linear-gradient(90deg, rgba(14,203,129,${Math.min(0.25, Math.abs(r.daily_pct)/20)}) 0%, transparent 100%)`
+        : '';
+    html += `<tr style="${pctBg}">
       <td class="scan-rank">${i + 1}</td>
-      <td>${r.symbol}</td>
-      <td>${r.name}</td>
-      <td style="color:${pctColor}">${r.price ? r.price.toFixed(2) : '-'}<span style="font-size:11px;color:#666"> ${pct}%</span></td>
-      <td class="${dAct.cls}">${dAct.text}</td>
-      <td>${r.daily_score}</td>
-      <td class="${wAct.cls}">${wAct.text}</td>
-      <td>${r.weekly_score}</td>
-      <td class="scan-combined" style="color:var(--ac-2)">${r.combined_score}</td>
-      <td style="font-size:12px;color:#aaa">${r.position_advice ? r.position_advice.split('—')[0].trim() : '-'}</td>
-      <td style="color:${(r.risk_reward||0) >= 2 ? 'var(--down)' : (r.risk_reward||0) >= 1 ? 'var(--warn)' : 'var(--up)'}">${r.risk_reward || '-'}</td>
-      <td><button class="scan-analyze-btn" onclick="analyzeFromScan('${r.symbol}')">分析</button></td>
+      <td style="font-family:var(--num);font-size:12px">${r.symbol}</td>
+      <td style="max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</td>
+      <td style="color:${pctColor};white-space:nowrap">${r.price ? r.price.toFixed(2) : '-'} <span style="font-size:10px">${pct}%</span></td>
+      <td><span class="${dAct.cls}" style="font-size:11px">${dAct.text}</span> <span style="color:var(--t3);font-size:10px">${r.daily_score}</span></td>
+      <td><span class="${wAct.cls}" style="font-size:11px">${wAct.text}</span> <span style="color:var(--t3);font-size:10px">${r.weekly_score}</span></td>
+      <td class="scan-combined">${r.combined_score}</td>
+      <td style="font-size:11px;color:var(--t2)">${r.position_advice ? r.position_advice.split(/[—－]/)[0].trim() : '-'}</td>
+      <td style="color:${(r.risk_reward||0) >= 2 ? 'var(--down)' : (r.risk_reward||0) >= 1 ? 'var(--warn)' : 'var(--up)'}; font-family:var(--num)">${r.risk_reward || '-'}</td>
+      <td><button class="scan-analyze-btn" onclick="analyzeFromScan('${r.symbol}')">▸</button></td>
     </tr>`;
   });
   html += '</tbody></table>';

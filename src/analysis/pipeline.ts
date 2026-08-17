@@ -117,5 +117,6 @@ export function buildAnalyzeResponse(
     flows,
     market_env: marketEnv,
     breadth: breadth ?? null,
+    analyzed_at: new Date().toISOString(),
   };
 }
