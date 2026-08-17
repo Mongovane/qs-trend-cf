@@ -42,26 +42,26 @@
 
 :root {
   /* 表面 —— OKX 暖灰基底，比冷蓝灰更沉稳 */
-  --bg: #0b0e11;
-  --s1: #141518;
-  --s2: #1c1e22;
-  --s3: #26282d;
-  --line: rgba(255, 255, 255, 0.04);
-  --line-2: rgba(255, 255, 255, 0.08);
+  --bg: #0d1117;
+  --s1: #161b22;
+  --s2: #21262d;
+  --s3: #2d333b;
+  --line: rgba(255, 255, 255, 0.06);
+  --line-2: rgba(255, 255, 255, 0.12);
 
   /* 文本 */
   --t1: #eaecef;
-  --t2: #848e9c;
-  --t3: #5e6673;
+  --t2: #8b949e;
+  --t3: #6e7681;
 
   /* 市场方向（A股口径：红涨绿跌） */
-  --up: #f6465d;
-  --up-2: #ff707e;
-  --up-soft: rgba(246, 70, 93, 0.10);
+  --up: #ff4d5a;
+  --up-2: #ff8a95;
+  --up-soft: rgba(255, 77, 90, 0.12);
   --up-line: rgba(246, 70, 93, 0.22);
-  --down: #0ecb81;
-  --down-2: #2edc96;
-  --down-soft: rgba(14, 203, 129, 0.10);
+  --down: #00d68f;
+  --down-2: #4de8a8;
+  --down-soft: rgba(0, 214, 143, 0.12);
   --down-line: rgba(14, 203, 129, 0.22);
 
   /* 交互 —— OKX 核心：交互元素不着色，用白/灰 */
@@ -69,13 +69,13 @@
   --ac-2: #ffffff;
   --ac-soft: rgba(255, 255, 255, 0.06);
   --ac-line: rgba(255, 255, 255, 0.15);
-  --warn: #f0b90b;
-  --warn-soft: rgba(240, 185, 11, 0.08);
-  --warn-line: rgba(240, 185, 11, 0.18);
+  --warn: #fcd535;
+  --warn-soft: rgba(252, 213, 53, 0.10);
+  --warn-line: rgba(252, 213, 53, 0.22);
   --data: #b7bdc6;
   /* CTA 买入绿 —— OKX 的主行动按钮是绿色（=买入语义） */
-  --cta: #0ecb81;
-  --cta-hover: #10e08f;
+  --cta: #00d68f;
+  --cta-hover: #1aecA0;
 
   /* 尺度 */
   --r-s: 5px;
@@ -127,9 +127,9 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   display: flex; align-items: center; gap: 10px;
   padding: 0 14px;
   height: var(--top-h); flex-shrink: 0;
-  background: rgba(12, 15, 19, 0.86);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  background: rgba(13, 17, 23, 0.92);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
   border-bottom: 1px solid var(--line);
   position: relative; z-index: 100;
 }
@@ -162,7 +162,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   position: absolute; top: 38px; left: 0; z-index: 200;
   background: var(--s2); border: 1px solid var(--line-2);
   border-radius: var(--r); max-height: 300px; overflow-y: auto;
-  width: 268px; display: none; padding: 4px;
+  width: min(268px, calc(100vw - 28px)); display: none; padding: 4px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
 }
 .sr-item {
@@ -254,12 +254,14 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 /* ===== 布局 ===== */
 .main {
   display: grid; grid-template-columns: 1fr 344px;
-  gap: 1px; background: var(--line);
+  gap: 0; background: var(--bg);
+  border-left: 0;
   height: calc(100vh - var(--top-h));
 }
 .left-panel { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
 .right-panel {
-  background: var(--bg); overflow-y: auto; padding: 10px;
+  background: var(--s1); overflow-y: auto; padding: 10px;
+  border-left: 1px solid var(--line-2);
   display: flex; flex-direction: column; gap: 10px;
 }
 /* flex 子项默认 min-height:auto 仍会被压缩，必须显式禁止收缩 */
@@ -303,7 +305,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   padding: 10px 13px;
   font-size: 11.5px; font-weight: 650; color: var(--t2);
   letter-spacing: 0.05em; text-transform: uppercase;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-2);
   cursor: pointer; user-select: none;
 }
 .sc-header .sc-arrow {
@@ -340,7 +342,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   font-size: 0;
   background:
     conic-gradient(currentColor calc(var(--score, 0) * 3.6deg),
-      rgba(255, 255, 255, 0.07) 0);
+      rgba(255, 255, 255, 0.05) 0);
+  /* score=0 时不画弧，避免 0deg 处的细缝 */
   mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
   -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
 }
@@ -389,7 +392,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .ml-bar {
   height: 100%; border-radius: var(--r-s);
   transition: width 0.6s var(--ease);
-  opacity: 0.32;
+  opacity: 0.40;
 }
 .ml-bar::after {
   content: ""; position: absolute; top: 0; right: 0; bottom: 0;
@@ -985,18 +988,18 @@ const MAX_SIGNAL_RECORDS = 200;  // 最多记录200条信号
 // ===== ECharts 全局主题色 =====
 const C = {
   bg: 'transparent',
-  up: '#f6465d',       // 涨-红
-  down: '#0ecb81',     // 跌-绿
-  ma5: '#f0b90b',      // MA5-金
+  up: '#ff4d5a',       // 涨-红
+  down: '#00d68f',     // 跌-绿
+  ma5: '#fcd535',      // MA5-金
   ma10: '#c661ff',     // MA10-紫
   ma20: '#5470c6',     // MA20-灰蓝(柔和)
   ma60: '#2dd4bf',     // MA60-青
-  text: '#8b95a3',
-  textDim: '#59636f',
+  text: '#8b949e',
+  textDim: '#6e7681',
   grid: 'rgba(255,255,255,0.05)',
   axis: 'rgba(255,255,255,0.13)',
   preClose: '#59636f',
-  avgLine: '#f0b90b',
+  avgLine: '#fcd535',
 };
 
 /**
@@ -1021,20 +1024,20 @@ const MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monosp
 const AXIS_COMMON = {
   axisLine: { lineStyle: { color: 'rgba(255,255,255,0.10)' } },
   axisTick: { show: false },
-  axisLabel: { color: '#59636f', fontSize: 10, fontFamily: MONO },
+  axisLabel: { color: '#6e7681', fontSize: 10, fontFamily: MONO },
   splitLine: { lineStyle: { color: 'rgba(255,255,255,0.045)', type: 'dashed' } },
 };
 
 const QS_THEME = {
   // 调色板顺序即 MA5/MA10/MA20/MA60 —— tooltip 的 p.color 取自此处，
   // 必须与 series.lineStyle 一致，否则图例与线条颜色对不上（原实现即如此）。
-  color: ['#f0b90b', '#c661ff', '#5470c6', '#72c0b4', '#2dd4bf', '#f6465d', '#0ecb81'],
+  color: ['#f0b90b', '#c661ff', '#5470c6', '#72c0b4', '#2dd4bf', '#ff4d5a', '#00d68f'],
   backgroundColor: 'transparent',
-  textStyle: { fontFamily: FONT, color: '#8b95a3' },
+  textStyle: { fontFamily: FONT, color: '#8b949e' },
   title: { textStyle: { color: '#eaedf2', fontWeight: 600 } },
-  legend: { textStyle: { color: '#8b95a3', fontSize: 10 }, inactiveColor: '#3a424c' },
+  legend: { textStyle: { color: '#8b949e', fontSize: 10 }, inactiveColor: '#3a424c' },
   tooltip: {
-    backgroundColor: 'rgba(19,24,31,0.93)',
+    backgroundColor: 'rgba(22,27,34,0.94)',
     borderColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
     padding: [9, 12],
@@ -1046,7 +1049,7 @@ const QS_THEME = {
       lineStyle: { color: 'rgba(255,255,255,0.22)', width: 1, type: [4, 4] },
       crossStyle: { color: 'rgba(255,255,255,0.22)', width: 1, type: [4, 4] },
       label: {
-        backgroundColor: '#232932', color: '#eaedf2',
+        backgroundColor: '#2d333b', color: '#eaedf2',
         borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1,
         fontSize: 10, fontFamily: MONO, padding: [3, 6], borderRadius: 4,
         shadowBlur: 0,
@@ -1077,7 +1080,7 @@ const QS_THEME = {
       lineStyle: { color: '#5470c6', width: 1 },
       areaStyle: { color: 'rgba(91,124,250,0.10)' },
     },
-    textStyle: { color: '#59636f', fontSize: 10, fontFamily: MONO },
+    textStyle: { color: '#6e7681', fontSize: 10, fontFamily: MONO },
     emphasis: { handleStyle: { borderColor: '#b7bdc6' } },
   },
 };
@@ -1094,10 +1097,15 @@ function initCharts() {
   indicatorChart = echarts.init(document.getElementById('indicator-chart'), T);
 
 
+  let _resizeRaf = 0;
   window.addEventListener('resize', () => {
-    klineChart.resize(); volumeChart.resize(); flowChart.resize();
-    minuteChart.resize(); minuteVolChart.resize();
-    indicatorChart.resize();
+    if (_resizeRaf) return;
+    _resizeRaf = requestAnimationFrame(() => {
+      _resizeRaf = 0;
+      klineChart.resize(); volumeChart.resize(); flowChart.resize();
+      minuteChart.resize(); minuteVolChart.resize();
+      indicatorChart.resize();
+    });
   });
 
   // 视图切换
@@ -2720,6 +2728,13 @@ function updateQuote(q) {
     <span class="qb-pct ${cls}">${sign}${q.pct.toFixed(2)}%</span>
     <span class="qb-meta">量 ${fmtVol(q.volume)} · 换手 ${q.turnover.toFixed(1)}%</span>
   `;
+  // 动画结束后清除 class，否则相同方向连续两次变动第二次不闪
+  if (flash) {
+    const priceEl = el.querySelector('.qb-price');
+    if (priceEl) priceEl.addEventListener('animationend', () => {
+      priceEl.classList.remove('flash-up', 'flash-down');
+    }, { once: true });
+  }
 }
 
 /** 坐标轴用的数量缩写：12345 → 1.2万 */
@@ -2790,7 +2805,8 @@ async function doSearch() {
 
 function selectStock(code, name) {
   searchResults.style.display = 'none';
-  searchInput.value = code;
+  searchInput.value = '';     // 选完清空，准备下次搜索
+  searchInput.blur();         // 移出焦点，不然再点搜索框会闪出旧结果
   analyze(code);
 }
 

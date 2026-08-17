@@ -120,6 +120,42 @@ if (cmd === 'run' || cmd === 'selftest') {
   for (const [k, v] of Object.entries(byReason).sort((a, b) => b[1] - a[1])) {
     console.log(`  ${k.padEnd(16)} ${v}`);
   }
+  // ── 按 entryScore 分档统计（最该看的一张表）──
+  // 如果高分和低分的胜率差不多，说明评分没有区分度，加再多指标也没用
+  if (r.trades.length >= 10) {
+    const buckets: Record<string, { wins: number; total: number; pnl: number[] }> = {};
+    const labels = ['<55', '55-64', '65-74', '75-84', '85+'];
+    for (const l of labels) buckets[l] = { wins: 0, total: 0, pnl: [] };
+    for (const t of r.trades) {
+      const sc = t.entryScore;
+      const lbl = sc < 55 ? '<55' : sc < 65 ? '55-64' : sc < 75 ? '65-74' : sc < 85 ? '75-84' : '85+';
+      buckets[lbl].total += 1;
+      if (t.pnl > 0) buckets[lbl].wins += 1;
+      buckets[lbl].pnl.push(t.pnlPct);
+    }
+    console.log('\n【按评分分档的胜率与收益（核心检验：评分是否有区分度）】');
+    console.log('  分数段    笔数    胜率     平均收益/笔   备注');
+    console.log('  ' + '─'.repeat(58));
+    let isMonotone = true;
+    let prevWr = -1;
+    for (const lbl of labels) {
+      const b = buckets[lbl];
+      if (!b.total) continue;
+      const wr = b.wins / b.total;
+      const avg = b.pnl.reduce((a, x) => a + x, 0) / b.pnl.length;
+      const note = wr < prevWr ? '⚠ 胜率下降' : '';
+      if (prevWr >= 0 && wr < prevWr - 0.05) isMonotone = false;
+      prevWr = wr;
+      console.log(`  ${lbl.padEnd(9)} ${String(b.total).padStart(4)}    ${(wr * 100).toFixed(1).padStart(5)}%    ${(avg * 100 >= 0 ? '+' : '') + (avg * 100).toFixed(2).padStart(6)}%       ${note}`);
+    }
+    if (!isMonotone) {
+      console.log('\n  ⚠ 胜率不随评分单调递增 —— 说明当前评分对交易结果没有区分度。');
+      console.log('  　改善方向：调整模块权重或过滤低置信度信号，而非继续加指标。');
+    } else if (r.trades.length >= 30) {
+      console.log('\n  ✓ 胜率大致随评分递增，评分具有一定区分度。');
+    }
+  }
+
   save('equity.json', r.equity);
   save('trades.json', r.trades);
   save('metrics.json', r.metrics);
