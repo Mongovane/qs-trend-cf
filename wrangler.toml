@@ -10,9 +10,9 @@ pages_build_output_dir = "public"
 # 评分档位：enhanced（六模块，含技术指标层）| legacy（复刻原版五模块权重）
 SCORING_PROFILE = "enhanced"
 # 扫描股票池大小（按成交额降序取前 N 只）
-SCAN_UNIVERSE = "500"
+SCAN_UNIVERSE = "800"
 # 每次轮询推进的股票数量。免费版务必 <= 12（每只约 3 个子请求，上限 50）
-SCAN_BATCH_SIZE = "8"
+SCAN_BATCH_SIZE = "14"
 # 市场宽度抓取页数上限（每页 100 只）。免费版建议 <= 12
 BREADTH_MAX_PAGES = "10"
 # 上游超时（毫秒）

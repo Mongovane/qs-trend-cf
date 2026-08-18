@@ -13,6 +13,8 @@ import { calcChipDistribution, chipSummary } from './chipDistribution';
 import { detectCandlePatterns } from './candlePatterns';
 
 
+import type { EntryFilterParams } from './entryFilters';
+
 export interface AnalyzeOptions {
   symbol: string;
   period?: 'day' | 'week' | 'month';
@@ -23,6 +25,8 @@ export interface AnalyzeOptions {
   enrich?: boolean;
   /** 扫描场景只需评分，跳过 K 线序列化 */
   lite?: boolean;
+  /** 覆盖入场过滤参数（扫描用宽松版） */
+  filterOverride?: EntryFilterParams;
 }
 
 export interface AnalyzeOutcome {
@@ -58,7 +62,7 @@ export async function analyzeSymbol(opts: AnalyzeOptions, env?: FetchEnv): Promi
   // 实盘路径传入交易时钟，使量比按市场通行口径做时间归一化
   const result = runAnalysis(
     klines, quote, flows, opts.indexKlines ?? null, profile,
-    undefined, elapsedTradingMinutes(),
+    opts.filterOverride, elapsedTradingMinutes(),
   );
   const signal = toOptimizable(result);
 

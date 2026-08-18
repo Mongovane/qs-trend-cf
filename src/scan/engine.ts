@@ -21,6 +21,30 @@ import type { FetchEnv } from '../data/http';
 import { fetchIndexKline, fetchMarketBreadth, fetchTopAShares } from '../data/fetcher';
 import { analyzeSymbol } from '../analysis/pipeline';
 import type { ScoringProfile } from '../analysis/signalEngine';
+import { DEFAULT_FILTER_PARAMS, type EntryFilterParams } from '../analysis/entryFilters';
+
+/**
+ * 扫描专用的宽松过滤参数。
+ * 
+ * 原实现用和详情页一样的严格参数，导致弱市里扫出 0 只 —— 
+ * 比如大盘在 200 日线下方时 regimeMaPeriod=200 会一刀切掉全部候选，
+ * 追高过滤会干掉所有近期涨幅好的股票。
+ * 
+ * 扫描的目的是「发现候选」而不是「最终决策」，所以：
+ * - 关闭大盘择时（否则弱市里扫描功能等于废了）
+ * - 放宽追高阈值（有涨幅才值得关注）
+ * - 放宽量能确认（盘中时量比不稳定）
+ * - 保留涨停/停牌/出货形态（这些是物理限制，不能放）
+ * 但在 applyStructuralPlan 里关闭结构化止损（扫描不需要精确止损位）
+ */
+const SCAN_FILTERS: EntryFilterParams = {
+  ...DEFAULT_FILTER_PARAMS,
+  regimeMaPeriod: 0,           // 关闭大盘择时
+  maxExtensionPct: 35,         // 放宽追高阈值（原 15%）
+  minVolumeRatio: 0.5,         // 放宽量能确认（原 1.2）
+  minTurnoverAmount: 30_000_000, // 略放宽流动性（原 5000万）
+  applyStructuralPlan: false,  // 扫描不需要结构化止损
+};
 import { pyRound } from '../util/pynum';
 
 const BUY_ACTIONS = new Set(['强烈买入', '买入', '谨慎买入']);
@@ -88,12 +112,21 @@ export interface ScanState {
   lock_until: number;
   /** 缓存的共享上下文，避免每批重复抓取 */
   index_cached: boolean;
+  /** 诊断统计：各阶段被拦的原因分布 */
+  diagnostics: {
+    totalAnalyzed: number;
+    passedSignal: number;
+    blockedByVeto: number;
+    blockedByScore: number;
+    blockedByAction: number;
+  };
 }
 
 const IDLE_STATE: ScanState = {
   status: 'idle', stage: '', phase: 'daily', progress: 0,
   total: 0, scanned: 0, found: 0, results: [], error: '',
   start_time: 0, elapsed: 0, cursor: 0,
+  diagnostics: { totalAnalyzed: 0, passedSignal: 0, blockedByVeto: 0, blockedByScore: 0, blockedByAction: 0 },
   candidates: [], daily_hits: [], dual_hits: [], lock_until: 0, index_cached: false,
 };
 
@@ -142,6 +175,7 @@ export function publicView(state: ScanState): Record<string, unknown> {
     results: state.results,
     error: state.error,
     elapsed,
+    diagnostics: state.diagnostics,
   };
 }
 
@@ -208,10 +242,20 @@ export async function stepScan(env: ScanEnv, profile: ScoringProfile): Promise<R
     for (const c of batch) {
       try {
         const r = await analyzeSymbol(
-          { symbol: c.code, period: 'day', profile, indexKlines, breadth, enrich: false, lite: true },
+          { symbol: c.code, period: 'day', profile, indexKlines, breadth, enrich: false, lite: true,
+            filterOverride: SCAN_FILTERS },
           env,
         );
+        state.diagnostics.totalAnalyzed += 1;
+        if (r.ok && r.signal) {
+          if (!BUY_ACTIONS.has(r.signal.action)) {
+            if (r.signal.veto_reason) state.diagnostics.blockedByVeto += 1;
+            else if ((r.signal.score ?? 0) < 60) state.diagnostics.blockedByScore += 1;
+            else state.diagnostics.blockedByAction += 1;
+          }
+        }
         if (r.ok && r.signal && BUY_ACTIONS.has(r.signal.action)) {
+          state.diagnostics.passedSignal += 1;
           state.daily_hits.push({
             symbol: c.code,
             name: c.name || (r.quote ? r.quote.name : ''),
@@ -249,7 +293,8 @@ export async function stepScan(env: ScanEnv, profile: ScoringProfile): Promise<R
     for (const d of batch) {
       try {
         const r = await analyzeSymbol(
-          { symbol: d.symbol, period: 'week', profile, indexKlines, breadth, enrich: false, lite: true },
+          { symbol: d.symbol, period: 'week', profile, indexKlines, breadth, enrich: false, lite: true,
+            filterOverride: SCAN_FILTERS },
           env,
         );
         if (r.ok && r.signal && BUY_ACTIONS.has(r.signal.action)) {
