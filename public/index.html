@@ -1507,7 +1507,7 @@ function renderKline(rawKlines, signal) {
       },
       splitLine: { lineStyle: { color: C.grid } },
     },
-    grid: { left: 60, right: 50, top: 30, bottom: 50 },
+    grid: { left: 60, right: 88, top: 30, bottom: 50 },
     legend: {
       data: ['MA5','MA10','MA20','MA60'],
       top: 4, left: 60,
@@ -1530,30 +1530,28 @@ function renderKline(rawKlines, signal) {
       trigger: 'axis', axisPointer: { type: 'cross', lineStyle: { color: '#666' } },
       formatter: (params) => {
         if (!params || !params.length) return '';
-        const idx = params[0].dataIndex;
-        const k = klines[idx];
+        const k = klines[params[0].dataIndex];
         if (!k) return '';
-        const isUp = k.close >= k.open;
-        const c = isUp ? 'up' : 'down';
-        let html = `<div style="font-size:12px;line-height:1.6">
-          <div style="color:${C.textDim}">${k.date}</div>
-          <div>开 <span class="${c}" style="font-weight:bold">${k.open.toFixed(2)}</span>
-               高 <span class="up" style="font-weight:bold">${k.high.toFixed(2)}</span></div>
-          <div>收 <span class="${c}" style="font-weight:bold">${k.close.toFixed(2)}</span>
-               低 <span class="down" style="font-weight:bold">${k.low.toFixed(2)}</span></div>`;
-        if (k.pct) html += `<div style="color:${k.pct>=0?C.up:C.down}">${k.pct>=0?'+':''}${k.pct.toFixed(2)}%</div>`;
-        html += `<div style="color:${C.textDim}">量 ${fmtVol(k.volume)}`;
-        if (k.amount > 0) html += ` 额 ${fmtVol(k.amount)}`;
-        if (k.turnover > 0) html += ` 换手 ${k.turnover.toFixed(1)}%`;
-        html += '</div>';
-        // MA值
-        for (const p of params) {
-          if (p.seriesName && p.seriesName.startsWith('MA') && p.value != null) {
-            html += `<div style="color:${p.color}">${p.seriesName} ${p.value.toFixed(2)}</div>`;
-          }
+        const up = k.close >= k.open;
+        // 紧凑两行：日期+涨跌 | OHLC 横排 | 量额换手 | MA 合并一行
+        let h = `<div style="font-size:11px;line-height:1.55">`;
+        h += `<b>${k.date}</b> <span style="color:${k.pct>=0?C.up:C.down}">${k.pct>=0?'+':''}${k.pct.toFixed(2)}%</span><br>`;
+        h += `开 <b style="color:${up?C.up:C.down}">${k.open.toFixed(2)}</b> `;
+        h += `高 <b style="color:${C.up}">${k.high.toFixed(2)}</b> `;
+        h += `收 <b style="color:${up?C.up:C.down}">${k.close.toFixed(2)}</b> `;
+        h += `低 <b style="color:${C.down}">${k.low.toFixed(2)}</b><br>`;
+        h += `<span style="color:${C.textDim}">量 ${fmtVol(k.volume)}`;
+        if (k.amount > 0) h += ` 额 ${fmtAmount(k.amount)}`;
+        if (k.turnover > 0) h += ` 换手 ${k.turnover.toFixed(1)}%`;
+        h += '</span>';
+        const mas = [];
+        for (const pp of params) {
+          if (pp.seriesName && pp.seriesName.startsWith('MA') && pp.value != null)
+            mas.push(`<span style="color:${pp.color}">${pp.seriesName} ${(+pp.value).toFixed(2)}</span>`);
         }
-        html += '</div>';
-        return html;
+        if (mas.length) h += `<br>${mas.join(' ')}`;
+        h += '</div>';
+        return h;
       }
     },
     dataZoom: [
@@ -3928,11 +3926,29 @@ function closeScan(e) {
   stopScanPolling();
 }
 
+async function loadScanConfig() {
+  try {
+    const r = await fetch(API + '/api/health');
+    const d = await r.json();
+    // wrangler.toml 的 vars 会出现在 health 响应里（如果有的话）
+    // 但 health 没返回 vars —— 用 scan status 拿 total
+    const s = await (await fetch(API + '/api/scan?action=status')).json();
+    const el = document.getElementById('scan-universe-info');
+    if (el) {
+      if (s.total > 0) {
+        el.textContent = `扫描范围：成交额前 ${s.total} 只活跃A股`;
+      } else {
+        el.textContent = '扫描范围：成交额前 N 只活跃A股（启动后显示实际数量）';
+      }
+    }
+  } catch(e) {}
+}
 function renderScanIdle() {
+  loadScanConfig();
   document.getElementById('scan-content').innerHTML = `
     <div class="scan-empty">
       <div style="margin-bottom:16px;font-size:15px;color:#aaa">扫描全A股，找出日K和周K同时符合买入信号的股票</div>
-      <div style="margin-bottom:8px;color:#666;font-size:13px">扫描范围：成交额前 500 只活跃A股（可在 SCAN_UNIVERSE 调整）</div>
+      <div style="margin-bottom:8px;color:#666;font-size:13px" id="scan-universe-info">扫描范围：加载中...</div>
       <div style="margin-bottom:8px;color:#666;font-size:13px">筛选条件：日K买入 + 周K买入（双周期共振）</div>
       <div style="margin-bottom:20px;color:#666;font-size:13px">预计耗时：2-4分钟（边缘分批执行，期间请保持页面打开）</div>
       <button class="scan-btn" style="font-size:15px;padding:8px 28px" onclick="startScan()">开始扫描</button>

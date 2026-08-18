@@ -11,6 +11,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) =>
       scoring_profile: env.SCORING_PROFILE === 'legacy' ? 'legacy' : 'enhanced',
       scan_kv: env.SCAN_KV ? 'bound' : 'missing',
       upstream_proxy: env.UPSTREAM_PROXY_BASE ? 'configured' : 'direct',
+      config: {
+        scan_universe: env.SCAN_UNIVERSE || '500',
+        scan_batch_size: env.SCAN_BATCH_SIZE || '8',
+      },
     };
 
     if (url.searchParams.get('probe') !== '1') return json(base);
