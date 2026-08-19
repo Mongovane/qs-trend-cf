@@ -1328,7 +1328,7 @@ function renderKline(rawKlines, signal) {
           : `海龟止损 ${b.stop_loss.toFixed(2)}`;
         markLines.push({ yAxis: b.stop_loss, lineStyle: { color: C.down, type: [5, 4], width: 1, opacity: 0.85 },
           label: { formatter: slLabel, color: '#04140d', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
-            backgroundColor: C.down, padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
+            backgroundColor: C.down, padding: [3, 5], borderRadius: 3, position: 'insideStartTop' } });
         const nVal = b.current_n || '?';
         _signalLines.push({
           value: b.stop_loss,
@@ -1350,7 +1350,7 @@ function renderKline(rawKlines, signal) {
           : `历史突破 ${b.entry_price.toFixed(2)}`;
         markLines.push({ yAxis: b.entry_price, lineStyle: { color: entryColor, type: 'solid', width: 1.2, opacity: 0.9 },
           label: { formatter: entryText, color: '#fff', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
-            backgroundColor: entryColor, padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
+            backgroundColor: entryColor, padding: [3, 5], borderRadius: 3, position: 'insideStartTop' } });
         _signalLines.push({
           value: b.entry_price,
           title: isBearish ? '做空入场价（海龟法则）' : '做多入场价（海龟法则）',
@@ -1369,7 +1369,7 @@ function renderKline(rawKlines, signal) {
   if (tp.entry_price > 0 && signal.action && signal.action.includes('买入')) {
     markLines.push({ yAxis: tp.entry_price, lineStyle: { color: '#f0b90b', type: 'solid', width: 1, opacity: 0.9 },
       label: { formatter: `计划买入 ${tp.entry_price.toFixed(2)}`, color: '#1a1200', fontSize: 9.5,
-        fontWeight: 'bold', backgroundColor: 'rgba(240,185,11,0.9)', padding: [3, 5], borderRadius: 3, position: 'insideEndBottom' } });
+        fontWeight: 'bold', backgroundColor: 'rgba(240,185,11,0.9)', padding: [3, 5], borderRadius: 3, position: 'insideStartBottom' } });
     _signalLines.push({
       value: tp.entry_price,
       title: '计划买入价（当前）',
@@ -1381,7 +1381,7 @@ function renderKline(rawKlines, signal) {
   if (tp.stop_loss > 0 && signal.action && signal.action.includes('买入')) {
     markLines.push({ yAxis: tp.stop_loss, lineStyle: { color: C.down, type: 'solid', width: 1, opacity: 0.75 },
       label: { formatter: `计划止损 ${tp.stop_loss.toFixed(2)}`, color: '#04140d', fontSize: 9.5,
-        fontWeight: 'bold', backgroundColor: C.down, padding: [3, 5], borderRadius: 3, position: 'insideEndBottom' } });
+        fontWeight: 'bold', backgroundColor: C.down, padding: [3, 5], borderRadius: 3, position: 'insideStartBottom' } });
   }
 
   // 形态目标价
@@ -1400,7 +1400,7 @@ function renderKline(rawKlines, signal) {
           : `形态目标 ${p.target_price.toFixed(2)}`;
         markLines.push({ yAxis: p.target_price, lineStyle: { color: pBearish ? C.down : '#848e9c', type: [5, 4], width: 1, opacity: 0.85 },
           label: { formatter: targetLabel, color: '#fff', fontSize: 9.5, fontWeight: 'bold', lineHeight: 13,
-            backgroundColor: pBearish ? C.down : '#5e6673', padding: [3, 5], borderRadius: 3, position: 'insideEndTop' } });
+            backgroundColor: pBearish ? C.down : '#5e6673', padding: [3, 5], borderRadius: 3, position: 'insideStartTop' } });
         _signalLines.push({
           value: p.target_price,
           title: `${p.name} 目标价`,
@@ -1541,7 +1541,7 @@ function renderKline(rawKlines, signal) {
         h += `收 <b style="color:${up?C.up:C.down}">${k.close.toFixed(2)}</b> `;
         h += `低 <b style="color:${C.down}">${k.low.toFixed(2)}</b><br>`;
         h += `<span style="color:${C.textDim}">量 ${fmtVol(k.volume)}`;
-        if (k.amount > 0) h += ` 额 ${fmtAmount(k.amount)}`;
+        if (k.amount > 0) h += ` 额 ${fmtVol(k.amount)}`;
         if (k.turnover > 0) h += ` 换手 ${k.turnover.toFixed(1)}%`;
         h += '</span>';
         const mas = [];
@@ -2129,7 +2129,7 @@ function renderMinute(data, chanlunData) {
         areaStyle: { color: pColor === C.up ? 'rgba(246,70,93,0.09)' : 'rgba(14,203,129,0.09)' },
         markLine: { silent: true, symbol: 'none', animation: false,
           data: [{ yAxis: pre, lineStyle: { color: C.preClose, type: 'dashed', width: 1 },
-            label: { formatter: '昨收 ' + pre.toFixed(3), color: C.textDim, fontSize: 10, position: 'insideEndTop' } }]
+            label: { formatter: '昨收 ' + pre.toFixed(3), color: C.textDim, fontSize: 10, position: 'insideStartTop' } }]
         },
         markPoint: (markPoints.length || fractalMarks.length) ? {
           data: [...markPoints, ...fractalMarks],
