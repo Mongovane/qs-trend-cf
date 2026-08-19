@@ -110,7 +110,7 @@ if (!existsSync(goldenPath)) {
     });
 
     test(`[${name}] CANSLIM 模块`, () => {
-      const r = analyzeCanslim(klines, quote, flows, index);
+      const r = analyzeCanslim(klines, quote, flows, index, true);  // legacy for parity
       assert.equal(r.c_score, c.canslim.c, 'C');
       assert.equal(r.a_score, c.canslim.a, 'A');
       assert.equal(r.n_score, c.canslim.n, 'N');

@@ -231,7 +231,7 @@ export function runAnalysis(
   const patterns = analyzePatterns(klines, isLegacy);
   const vp = analyzeVolumePrice(klines, quote, flows, isLegacy ? undefined : elapsedMinutes);
   const breakouts = analyzeBreakout(klines);
-  const canslim = analyzeCanslim(klines, quote, flows, indexKlines);
+  const canslim = analyzeCanslim(klines, quote, flows, indexKlines, isLegacy);
   const technical: TechnicalResult | null =
     profile === 'enhanced' ? analyzeTechnical(klines) : null;
 

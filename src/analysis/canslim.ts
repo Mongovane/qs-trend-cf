@@ -136,12 +136,23 @@ function calcIScore(flows?: readonly FundFlow[] | null): [number, string] {
  * [FIX-P2] 原实现中 src 被赋值两次（第二次覆盖第一次），而 src_name 基于第一次判定，
  * 属冗余写法。此处合并为单次判定，行为与原版完全等价。
  */
+/**
+ * M —— 市场环境。
+ *
+ * 原实现：MA20 < MA60 时直接给 15 分，即使 78% 个股上涨也显示"偏空"。
+ * 这在轮动反弹行情（均线向下但个股普涨）下会严重误判。
+ *
+ * 修复后用**双因子综合**：
+ *   基础分 = 均线状态（35~80 分，占 60%）
+ *   修正分 = 近期动量（20 日上涨天数，占 40%）
+ * 两者加权取整。breadth bonus 在后续的 applyBreadthToMScore 里叠加。
+ */
 function calcMScore(
   indexKlines: readonly Kline[] | null | undefined,
   stockKlines: readonly Kline[],
+  legacy = false,
 ): [number, string] {
   const hasIndex = !!indexKlines && indexKlines.length >= 30;
-  const srcName = hasIndex ? '大盘指数' : '个股均线(近似)';
   const src = hasIndex ? (indexKlines as readonly Kline[]) : stockKlines;
   if (src.length < 30) return [50, ''];
   const closes = src.map((k) => k.close);
@@ -155,12 +166,30 @@ function calcMScore(
   for (let i = closes.length - 20; i < closes.length; i++) {
     if (i > 0 && closes[i] > closes[i - 1]) upDays20 += 1;
   }
-  let score: number;
-  if (ma20Val > ma60Val && upDays20 >= 13) score = 80;
-  else if (ma20Val > ma60Val && upDays20 >= 7) score = 70;
-  else if (ma20Val > ma60Val) score = 60;
-  else if (srcName === '大盘指数') score = 15;
-  else score = 35;
+
+  if (legacy) {
+    // ── legacy 档位：原版逻辑，与 Python 版逐字段一致 ──
+    const hasIdx = !!indexKlines && indexKlines.length >= 30;
+    let score: number;
+    if (ma20Val > ma60Val && upDays20 >= 13) score = 80;
+    else if (ma20Val > ma60Val && upDays20 >= 7) score = 70;
+    else if (ma20Val > ma60Val) score = 60;
+    else if (hasIdx) score = 15;
+    else score = 35;
+    return [score, `M(市场环境)${score}分`];
+  }
+
+  // ── enhanced 档位：双因子综合 ──
+  let maFactor: number;
+  if (ma20Val > ma60Val && upDays20 >= 13) maFactor = 80;
+  else if (ma20Val > ma60Val && upDays20 >= 7) maFactor = 70;
+  else if (ma20Val > ma60Val) maFactor = 60;
+  else if (upDays20 >= 12) maFactor = 45;
+  else if (upDays20 >= 8) maFactor = 35;
+  else maFactor = 20;
+
+  const momentumFactor = Math.round((upDays20 / 20) * 100);
+  const score = Math.round(maFactor * 0.6 + momentumFactor * 0.4);
   return [score, `M(市场环境)${score}分`];
 }
 
@@ -231,6 +260,7 @@ export function analyzeCanslim(
   quote?: Quote | null,
   flows?: readonly FundFlow[] | null,
   indexKlines?: readonly Kline[] | null,
+  legacy = false,
 ): CanslimResult {
   const [cScore, cText] = calcCScore(klines);
   const [aScore, aText] = calcAScore(klines);
@@ -238,7 +268,7 @@ export function analyzeCanslim(
   const [sScore] = calcSScore(klines, quote); // S 维度不产出信号文本（与原版一致）
   const [lScore, lText] = calcLScore(klines);
   const [iScore, iText] = calcIScore(flows);
-  const [mScore, mText] = calcMScore(indexKlines, klines);
+  const [mScore, mText] = calcMScore(indexKlines, klines, legacy);
 
   const total = pyInt(
     0.15 * cScore + 0.1 * aScore + 0.25 * nScore + 0.05 * sScore + 0.2 * lScore + 0.15 * iScore + 0.1 * mScore,
