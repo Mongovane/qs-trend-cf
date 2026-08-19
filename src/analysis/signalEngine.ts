@@ -41,8 +41,10 @@ const WEIGHTS: Record<ScoringProfile, Record<string, number>> = {
 };
 
 /** 风险等级 / 信号强度判定的分档阈值。 */
-const RISK_HEAVY = 5;
-const RISK_MEDIUM = 3;
+// 原实现 RISK_HEAVY=5，需要趋势下降+量价看跌+M分<30+止损信号全部满足才"高"，
+// 几乎不可能触发。降低阈值使风险判定更灵敏。
+const RISK_HEAVY = 4;
+const RISK_MEDIUM = 2;
 const STRONG_SCORE = 75;
 const MEDIUM_SCORE = 60;
 

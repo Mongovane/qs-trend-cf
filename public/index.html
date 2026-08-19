@@ -2425,7 +2425,7 @@ function renderSummary(signal) {
     <div class="sum-risk-row">
       <span class="sum-risk-dot ${riskClass}"></span>
       <span style="color:var(--t2)">风险 <span style="color:${risk==='低'?C.down:risk==='高'?C.up:'var(--warn)'};font-weight:700">${risk}</span></span>
-      <span style="color:var(--t3);margin-left:auto">置信度 <b style="color:var(--t2)">${signal.confidence||0}%</b></span>
+      <span style="color:var(--t3);margin-left:auto">${signal.veto_reason ? '评分' : ''}置信度 <b style="color:var(--t2)">${signal.confidence||0}%</b></span>
     </div>
   `;
 }

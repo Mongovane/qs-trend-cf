@@ -126,6 +126,8 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
     moduleScores['突破'] ?? 50,
     moduleScores['量价'] ?? 50,
     moduleScores['形态'] ?? 50,
+    // enhanced 档位的第六模块（legacy 档位不会有这个 key，?? 50 不影响）
+    moduleScores['技术指标'] ?? 50,
   ];
   const modulesAbove55 = scoresList.filter((s) => s >= 55).length;
 
@@ -209,6 +211,11 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
     }
   }
 
+  // ---- 6b. 如果最终被降为观望，仓位建议应为空仓 ----
+  if (action === '观望') {
+    positionAdvice = '空仓等待';
+  }
+
   // ---- 7. 写回 ----
   signalData.action = action;
   signalData.optimized_action = action;
@@ -226,6 +233,11 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
   signalData.position_advice = positionAdvice;
   signalData.risk_notes = riskNotes;
   signalData.risk_reward = riskReward;
+
+  // ---- 盈亏比倒挂时修正 risk_level（否则出现"风险低+盈亏比0.67"的矛盾） ----
+  if (riskReward > 0 && riskReward < 1.0 && signalData.risk_level === '低') {
+    signalData.risk_level = '中';
+  }
 
   if (Object.keys(tradePlan).length > 0) {
     tradePlan.position_size = positionAdvice;
