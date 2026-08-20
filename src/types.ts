@@ -81,6 +81,12 @@ export interface MarketBreadth {
   partial?: boolean;
   /** 新增：统计来源，便于前端与运维排查 */
   source?: string;
+  /** 涨停家数 */
+  limit_up?: number;
+  /** 跌停家数 */
+  limit_down?: number;
+  /** 炸板数（日内曾涨停后打开） */
+  broken_limit?: number;
 }
 
 /** 搜索结果项 */

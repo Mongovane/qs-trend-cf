@@ -945,6 +945,12 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
       <div class="cl-body" id="chanlun-body"></div>
     </div>
 
+    <!-- 多战法评分 -->
+    <div class="signal-card" id="strategy-card" style="display:none">
+      <div class="sc-header" onclick="toggleCard(this)"><span class="sc-arrow">▼</span>多战法评分</div>
+      <div id="strategy-body" class="cl-body"></div>
+    </div>
+
     <!-- 筹码分布 -->
     <div class="signal-card" id="chip-card" style="display:none">
       <div class="sc-header" onclick="toggleCard(this)"><span class="sc-arrow">▼</span>筹码分布</div>
@@ -2848,6 +2854,7 @@ async function analyze(symbol) {
     renderKline(data.klines, data.signal);
     renderFlow(data.flows);
     renderSignal(data.signal);
+    renderMultiStrategy(data);
     renderChips(data);
     renderSector(data);
     renderCanslim(data.signal.canslim);
@@ -3670,6 +3677,45 @@ function showEngineInfo() {
   document.body.appendChild(ov);
 }
 
+// ===== 多战法评分渲染 =====
+function renderMultiStrategy(data) {
+  const card = document.getElementById('strategy-card');
+  const body = document.getElementById('strategy-body');
+  const ms = data && data.multiStrategy;
+  if (!ms || !ms.strategies) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const barColors = {
+    'trend_following': '#00d68f',
+    'momentum_breakout': '#fcd535',
+    'mean_reversion': '#5470c6',
+    'canslim_growth': '#ff4d5a',
+  };
+
+  let html = `<div style="margin-bottom:10px;font-size:12px;color:var(--t1);line-height:1.6">${ms.recommendation}</div>`;
+  html += `<div style="display:flex;flex-direction:column;gap:8px">`;
+  for (const st of ms.strategies) {
+    const isBest = st.id === ms.best.id;
+    const color = barColors[st.id] || 'var(--t2)';
+    html += `<div style="padding:8px 10px;background:${isBest ? 'rgba(255,255,255,0.04)' : 'var(--s2)'};
+                         border-radius:var(--r);border:1px solid ${isBest ? 'rgba(255,255,255,0.08)' : 'transparent'}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:700;color:var(--t1)">${st.name}</span>
+        <span style="font-size:10px;color:var(--t3)">${st.nameEn}</span>
+        ${isBest ? '<span style="font-size:9px;padding:1px 5px;background:rgba(0,214,143,0.15);color:var(--down);border-radius:3px;font-weight:700">推荐</span>' : ''}
+        <span style="margin-left:auto;font-family:var(--num);font-size:16px;font-weight:700;color:${color}">${st.score}</span>
+      </div>
+      <div style="height:3px;background:rgba(255,255,255,0.04);border-radius:2px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;width:${st.score}%;background:${color};border-radius:2px;transition:width 0.5s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--t3)">${st.verdict} · 适用：${st.suitableMarket}</div>
+      ${st.reasons.length ? `<div style="font-size:10px;color:var(--t2);margin-top:2px">${st.reasons.slice(0, 3).join('，')}</div>` : ''}
+    </div>`;
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
 // ===== 筹码分布渲染 =====
 function renderChips(data) {
   const card = document.getElementById('chip-card');
@@ -3743,7 +3789,14 @@ function renderSector(data) {
       个股相对行业强度 <b style="color:${rsColor};font-size:15px;font-family:var(--num)">${sector.relativeStrength}</b>
       <span style="font-size:10px;color:var(--t3);margin-left:4px">${sector.relativeStrength > 1 ? '跑赢行业' : '跑输行业'}</span>
     </div>` : ''}
-    ${sector.leader ? `<div style="font-size:11px;color:var(--t3);margin-top:6px">行业领涨 <span style="color:var(--t1)">${sector.leader}</span></div>` : ''}
+    ${sector.flowRank != null ? `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:6px;border-top:1px solid var(--line)">
+      <span style="font-size:11px;color:var(--t3)">行业资金流排名</span>
+      <span style="font-size:13px;font-weight:700;color:${sector.mainNetInflow > 0 ? 'var(--up)' : sector.mainNetInflow < 0 ? 'var(--down)' : 'var(--t1)'};font-family:var(--num)">
+        第${sector.flowRank}名 ${sector.mainNetInflow > 0 ? '+' : ''}${sector.mainNetInflow}亿
+      </span>
+    </div>` : ''}
+    ${sector.leader ? `<div style="font-size:11px;color:var(--t3);margin-top:4px">行业领涨 <span style="color:var(--t1)">${sector.leader}</span></div>` : ''}
   `;
 }
 

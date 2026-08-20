@@ -11,6 +11,7 @@ import { fmt, fmtSigned } from '../util/pynum';
 import { elapsedTradingMinutes } from '../util/tradingClock';
 import { calcChipDistribution, chipSummary } from './chipDistribution';
 import { detectCandlePatterns } from './candlePatterns';
+import { scoreMultiStrategy, type StrategyContext } from './multiStrategy';
 
 
 import type { EntryFilterParams } from './entryFilters';
@@ -142,6 +143,21 @@ export function buildAnalyzeResponse(
         summary: chipSummary(chip, quote?.price || klines[klines.length - 1].close),
         distribution: chip.distribution,
       };
+    })(),
+    // 多战法并行评分
+    multiStrategy: (() => {
+      const ctx: StrategyContext = {
+        moduleScores: (signal?.module_scores ?? {}),
+        trend: { direction: (signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' } as any).direction, strength: (signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' } as any).strength, ma_arrangement: (signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' } as any).ma_arrangement },
+        volumePrice: { direction: (signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' } as any).direction, volume_ratio: (signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' } as any).volume_ratio, pattern: (signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' } as any).pattern },
+        breakouts: (signal?.breakouts ?? []).map(b => ({ signal: b.signal, system: b.system })),
+        canslim: { total: (signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' } as any).total, m_score: (signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' } as any).m_score, grade: (signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' } as any).grade },
+        technical: { score: (signal?.technical ?? { score: 50 } as any).score },
+        chipData: null,  // 筹码数据在下面才算出来
+      };
+      const chip = calcChipDistribution(klines, 120, quote?.price);
+      if (chip) ctx.chipData = { profitRatio: chip.profitRatio, concentration: chip.concentration, inDenseZone: chip.inDenseZone };
+      return scoreMultiStrategy(ctx);
     })(),
     // K线形态
     candlePatterns: detectCandlePatterns(klines).map(p => ({

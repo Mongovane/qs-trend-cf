@@ -17,6 +17,15 @@ import type { Kline } from '../types';
 import { cached, getJsonEastmoney, EM_UT, QUOTE_HOSTS, EM_KLINE_HOSTS, type FetchEnv } from '../data/http';
 import { pyRound } from '../util/pynum';
 
+export interface IndustryFlow {
+  code: string;
+  name: string;
+  /** 主力净流入（元） */
+  mainNetInflow: number;
+  /** 涨跌幅 */
+  pct: number;
+}
+
 export interface SectorInfo {
   /** 行业名称 */
   name: string;
@@ -38,6 +47,34 @@ export interface SectorInfo {
   relativeStrength: number | null;
   /** 行业领涨股 */
   leader: string | null;
+  /** 行业资金流排名（按主力净流入降序） */
+  flowRank: number | null;
+  /** 行业主力净流入（亿） */
+  mainNetInflow: number | null;
+}
+
+/** 获取行业资金流排名（主力净流入 Top/Bottom）。 */
+export async function fetchIndustryFlowRanking(env?: FetchEnv): Promise<IndustryFlow[]> {
+  return cached('industry_flow_rank', 180, async () => {
+    const data = await getJsonEastmoney('/api/qt/clist/get', {
+      fs: 'm:90+t:2',
+      fields: 'f12,f14,f3,f62',  // f62 = 主力净流入
+      fid: 'f62',
+      po: '1',
+      pn: '1',
+      pz: '50',
+      np: '1',
+      fltt: '2',
+      ut: EM_UT,
+    }, QUOTE_HOSTS, env);
+    const diff: any[] = data?.data?.diff ?? [];
+    return diff.map((d: any) => ({
+      code: String(d.f12 ?? ''),
+      name: String(d.f14 ?? ''),
+      mainNetInflow: Number(d.f62 ?? 0),
+      pct: Number(d.f3 ?? 0),
+    })).filter((s) => s.code);
+  });
 }
 
 /** 获取个股所属行业。 */
@@ -156,6 +193,18 @@ export async function fetchSectorComparison(
       rs = pyRound(stockPct20d / pct20d, 2);
     }
 
+    // 资金流排名
+    let flowRank: number | null = null;
+    let mainNetInflow: number | null = null;
+    try {
+      const flows = await fetchIndustryFlowRanking(env);
+      const fi = flows.findIndex((f) => f.code === sector.code);
+      if (fi >= 0) {
+        flowRank = fi + 1;
+        mainNetInflow = pyRound(flows[fi].mainNetInflow / 1e8, 2);
+      }
+    } catch { /* 资金流失败不影响主流程 */ }
+
     return {
       name: sector.name,
       code: sector.code,
@@ -167,6 +216,8 @@ export async function fetchSectorComparison(
       totalSectors: sorted.length,
       relativeStrength: rs,
       leader: sectorItem?.leader || sorted.find((s) => s.code === sector.code)?.leader || null,
+      flowRank,
+      mainNetInflow,
     };
   } catch {
     return null;
