@@ -2546,7 +2546,7 @@ function renderSignal(signal) {
   ml.innerHTML = sorted.map(([k, v]) => {
     const pct = Math.min(100, Math.max(0, v));
     const c = pct >= 65 ? C.up : pct >= 45 ? '#8b95a3' : C.down;
-    const tag = pct >= 65 ? '偏多' : pct >= 45 ? '中性' : '偏空';
+    const tag = pct >= 65 ? '偏多' : pct >= 55 ? '中性偏多' : pct >= 45 ? '中性' : pct >= 35 ? '中性偏空' : '偏空';
     return `<div class="ml-row">
       <span class="ml-name">${labels[k] || k}</span>
       <div class="ml-bar-bg">
@@ -2827,8 +2827,10 @@ function selectStock(code, name) {
 }
 
 // ===== 分析 =====
+let _analyzeReqId = 0;
 async function analyze(symbol) {
   currentSymbol = symbol;
+  const reqId = ++_analyzeReqId;  // 本次请求序号
   document.getElementById('loading').style.display = 'flex';
   if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
 
@@ -2841,6 +2843,8 @@ async function analyze(symbol) {
       fetch(`${API}/api/chanlun_daily?symbol=${symbol}${periodParam}`),
     ]);
     const data = await r.json();
+    // 竞态保护：如果期间用户又切了标的，丢弃这次的（过时）结果
+    if (reqId !== _analyzeReqId) return;
     _dailyChanlun = null;
     try { _dailyChanlun = await clRes.json(); } catch(e) {}
     document.getElementById('loading').style.display = 'none';
@@ -2853,13 +2857,19 @@ async function analyze(symbol) {
     updateQuote(data.quote);
     renderKline(data.klines, data.signal);
     renderFlow(data.flows);
-    renderSignal(data.signal);
-    renderMultiStrategy(data);
-    renderChips(data);
-    renderSector(data);
-    renderCanslim(data.signal.canslim);
-    renderKeyLevels(data.signal.key_levels);
-    renderMarket(data.signal, data.breadth);
+    // data.signal 可能为 null（后端降级），逐个防御
+    if (data.signal) {
+      renderSignal(data.signal);
+      renderMultiStrategy(data);
+      renderChips(data);
+      renderSector(data);
+      if (data.signal.canslim) renderCanslim(data.signal.canslim);
+      if (data.signal.key_levels) renderKeyLevels(data.signal.key_levels);
+      renderMarket(data.signal, data.breadth);
+    } else {
+      document.getElementById('sum-body').innerHTML =
+        `<div class="sum-text" style="color:${C.down}">分析数据不完整，请稍后重试</div>`;
+    }
 
     // 记录历史 & 更新自选星标
     const _sName = data.quote ? data.quote.name : symbol;
@@ -2906,8 +2916,12 @@ async function analyze(symbol) {
     }
 
     if (currentView === 'minute') loadMinute(symbol);
-    _refreshTimer = setInterval(() => refreshQuote(symbol), 2000);
+    // 只为最新请求启动刷新定时器
+    if (reqId === _analyzeReqId) {
+      _refreshTimer = setInterval(() => refreshQuote(symbol), 2000);
+    }
   } catch(e) {
+    if (reqId !== _analyzeReqId) return;  // 过时请求的异常直接忽略
     document.getElementById('loading').style.display = 'none';
     document.getElementById('sum-body').innerHTML = `<div class="sum-text" style="color:${C.down}">请求失败，请检查服务是否运行</div>`;
   }
@@ -4109,7 +4123,7 @@ function renderScanResults(data) {
       <td><span class="${wAct.cls}" style="font-size:11px">${wAct.text}</span> <span style="color:var(--t3);font-size:10px">${r.weekly_score}</span></td>
       <td class="scan-combined">${r.combined_score}</td>
       <td style="font-size:11px;color:var(--t2)">${r.position_advice ? r.position_advice.split(/[—－]/)[0].trim() : '-'}</td>
-      <td style="color:${(r.risk_reward||0) >= 2 ? 'var(--down)' : (r.risk_reward||0) >= 1 ? 'var(--warn)' : 'var(--up)'}; font-family:var(--num)">${r.risk_reward || '-'}</td>
+      <td style="color:${(r.risk_reward||0) >= 2 ? 'var(--down)' : (r.risk_reward||0) >= 1 ? 'var(--warn)' : 'var(--up)'}; font-family:var(--num)">${r.risk_reward ? (r.risk_reward < 1 ? '⚠' + r.risk_reward : r.risk_reward) : '-'}</td>
       <td><button class="scan-analyze-btn" onclick="analyzeFromScan('${r.symbol}')">▸</button></td>
     </tr>`;
   });
@@ -4127,6 +4141,8 @@ function formatScanAction(act) {
 }
 
 function analyzeFromScan(symbol) {
+  // 记录从扫描点进来的，用于检测扫描/详情结论不一致
+  window._fromScan = symbol;
   closeScan();
   analyze(symbol);
 }

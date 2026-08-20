@@ -116,6 +116,27 @@ export function buildAnalyzeResponse(
   breadth: MarketBreadth | null | undefined,
 ): Record<string, unknown> {
   const { symbol, quote, klines, signal, flows } = outcome;
+  // 筹码分布计算一次，供筹码卡片与多战法共用（这是最重的 O(days×bins) 计算）
+  const sharedChip = calcChipDistribution(klines, 120, quote?.price);
+  const lastClose = klines.length ? klines[klines.length - 1].close : 0;
+
+  // 多战法上下文（信号可能为 null，用安全默认值）
+  const trendCtx = signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' };
+  const vpCtx = signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' };
+  const canslimCtx = signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' };
+  const techCtx = signal?.technical ?? { score: 50 };
+  const strategyCtx: StrategyContext = {
+    moduleScores: signal?.module_scores ?? {},
+    trend: { direction: trendCtx.direction, strength: trendCtx.strength, ma_arrangement: trendCtx.ma_arrangement },
+    volumePrice: { direction: vpCtx.direction, volume_ratio: vpCtx.volume_ratio, pattern: vpCtx.pattern },
+    breakouts: (signal?.breakouts ?? []).map((b) => ({ signal: b.signal, system: b.system })),
+    canslim: { total: canslimCtx.total, m_score: canslimCtx.m_score, grade: canslimCtx.grade },
+    technical: { score: techCtx.score },
+    chipData: sharedChip
+      ? { profitRatio: sharedChip.profitRatio, concentration: sharedChip.concentration, inDenseZone: sharedChip.inDenseZone }
+      : null,
+  };
+
   return {
     symbol,
     name: quote ? quote.name : '',
@@ -126,39 +147,22 @@ export function buildAnalyzeResponse(
     market_env: marketEnv,
     breadth: breadth ?? null,
     analyzed_at: new Date().toISOString(),
-    // 筹码分布
-    chips: (() => {
-      const chip = calcChipDistribution(klines, 120, quote?.price);
-      if (!chip) return null;
-      return {
-        profitRatio: chip.profitRatio,
-        avgCost: chip.avgCost,
-        cost90: chip.cost90,
-        cost70: chip.cost70,
-        concentration: chip.concentration,
-        peakPrice: chip.peakPrice,
-        inDenseZone: chip.inDenseZone,
-        resistancePrice: chip.resistancePrice,
-        supportPrice: chip.supportPrice,
-        summary: chipSummary(chip, quote?.price || klines[klines.length - 1].close),
-        distribution: chip.distribution,
-      };
-    })(),
-    // 多战法并行评分
-    multiStrategy: (() => {
-      const ctx: StrategyContext = {
-        moduleScores: (signal?.module_scores ?? {}),
-        trend: { direction: (signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' } as any).direction, strength: (signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' } as any).strength, ma_arrangement: (signal?.trend ?? { direction: '震荡', strength: 50, ma_arrangement: '纠缠' } as any).ma_arrangement },
-        volumePrice: { direction: (signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' } as any).direction, volume_ratio: (signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' } as any).volume_ratio, pattern: (signal?.volume_price ?? { direction: '中性', volume_ratio: 1, pattern: '' } as any).pattern },
-        breakouts: (signal?.breakouts ?? []).map(b => ({ signal: b.signal, system: b.system })),
-        canslim: { total: (signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' } as any).total, m_score: (signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' } as any).m_score, grade: (signal?.canslim ?? { total: 50, m_score: 50, grade: 'C' } as any).grade },
-        technical: { score: (signal?.technical ?? { score: 50 } as any).score },
-        chipData: null,  // 筹码数据在下面才算出来
-      };
-      const chip = calcChipDistribution(klines, 120, quote?.price);
-      if (chip) ctx.chipData = { profitRatio: chip.profitRatio, concentration: chip.concentration, inDenseZone: chip.inDenseZone };
-      return scoreMultiStrategy(ctx);
-    })(),
+    // 筹码分布（复用 sharedChip）
+    chips: sharedChip ? {
+      profitRatio: sharedChip.profitRatio,
+      avgCost: sharedChip.avgCost,
+      cost90: sharedChip.cost90,
+      cost70: sharedChip.cost70,
+      concentration: sharedChip.concentration,
+      peakPrice: sharedChip.peakPrice,
+      inDenseZone: sharedChip.inDenseZone,
+      resistancePrice: sharedChip.resistancePrice,
+      supportPrice: sharedChip.supportPrice,
+      summary: chipSummary(sharedChip, quote?.price || lastClose),
+      distribution: sharedChip.distribution,
+    } : null,
+    // 多战法并行评分（复用 strategyCtx）
+    multiStrategy: scoreMultiStrategy(strategyCtx),
     // K线形态
     candlePatterns: detectCandlePatterns(klines).map(p => ({
       name: p.name, label: p.label, index: p.index, date: klines[p.index]?.date ?? '',

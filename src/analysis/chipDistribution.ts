@@ -68,8 +68,13 @@ export function calcChipDistribution(
   if (klines.length < 30) return null;
 
   const window = klines.slice(Math.max(0, klines.length - calcDays));
-  const price = currentPrice ?? window[window.length - 1].close;
-  if (price <= 0) return null;
+  if (!window.length) return null;
+  const lastClose = window[window.length - 1].close;
+  // currentPrice 可能是 0/NaN（脏数据或未传），回退到最后收盘价
+  const price = (currentPrice && currentPrice > 0 && Number.isFinite(currentPrice))
+    ? currentPrice
+    : lastClose;
+  if (!(price > 0) || !Number.isFinite(price)) return null;
 
   // ── 确定价格范围与分辨率 ──
   let lo = Infinity, hi = 0;

@@ -303,3 +303,58 @@ ECharts 在 markLine 参与统计时会传入异常的 `v.min/v.max`。
 
 - 成交量轴 `250,000` 改为 `25万`，省出横向空间
 - `plan-row` 增加 `.stacked` 变体，值过长时自动上下排
+
+---
+
+## D11 · 安全与健壮性审计（v6.6）
+
+从对抗视角（畸形输入、竞态、数值溢出、缓存投毒）排查，修复 8 个风险点。
+
+### 安全类
+
+**1. symbol 无校验直接进缓存 key 与上游 URL（缓存投毒 + 注入）**
+`parseSymbol` 原本只 `trim()`。symbol 会流入 KV 缓存 key（`quote_${symbol}`）和
+上游 API 的 secid 参数。畸形输入（超长串、特殊字符、URL 编码）会污染 KV、
+耗尽配额、或使上游请求异常。修复：严格校验只接受 6 位数字 + 可选市场后缀，
+非法输入返回空串由调用方拒绝。
+
+**2. 搜索关键字进缓存 key 无长度限制**
+`search_${kw}_${count}` 的 kw 是用户输入。超长 kw 生成超长 cache key 耗尽 KV。
+修复：截断到 20 字符并清洗非字母数字汉字。
+
+### 数值类
+
+**3. 缠论背驰比值 NaN/Infinity**
+`ratio = macd_area / prev.macd_area`，prev 极小时 ratio 爆炸，
+`raw = 94.5 - 35*ratio` 可能 NaN/Infinity。虽有 clamp 兜底但中间值已污染。
+修复：`Number.isFinite(ratio)` 检查。
+
+**4. 筹码分布现价为 0/NaN**
+`window[last].close` 若为脏数据 0，profitRatio 全错。
+修复：多层校验 `price > 0 && Number.isFinite(price)`，否则回退或返回 null。
+
+### 竞态类
+
+**5. 前端快速切换标的时慢响应覆盖快响应**
+搜 A 再搜 B，若 A 更慢，A 的结果覆盖 B —— 看到 B 的 K 线配 A 的结论。
+修复：请求序号 `_analyzeReqId`，只渲染最新请求的结果，过时的直接丢弃。
+
+**6. 刷新定时器竞态**
+过时请求会启动针对已切走标的的 2s 刷新定时器。
+修复：只为 `reqId === _analyzeReqId` 的最新请求启动定时器。
+
+### 健壮性类
+
+**7. data.signal 为 null 时前端崩溃**
+后端异常降级时 signal 可能为 null，前端直接 `data.signal.canslim` 抛错，
+整个渲染中断，页面卡 loading。修复：逐字段防御 + 友好降级文案。
+
+**8. 性能：筹码分布重复计算**
+pipeline 里 `calcChipDistribution`（最重的 O(days×bins) 计算）被调两次
+（多战法一次、筹码卡片一次）。修复：提取 `sharedChip` 计算一次共用。
+
+### 已知限制（未修，仅记录）
+
+- **KV 扫描锁非原子**：KV 最终一致，两个快速轮询可能都读到旧 lock_until。
+  当前用 120s + LOCK_MS 时间窗缓解，Cloudflare 免费版无 Durable Objects
+  无法做真原子锁。实际影响：极端并发下可能重复推进一个批次，不影响正确性。

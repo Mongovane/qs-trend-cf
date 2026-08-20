@@ -38,8 +38,23 @@ export function parseCount(url: URL, def = 250, max = 10000): number {
   return Math.min(v, max);
 }
 
+/**
+ * 解析并严格校验股票代码。
+ *
+ * 只接受 6 位数字，可选 .SH/.SZ/.BJ/.SS 后缀（大小写不敏感）。
+ * 非法输入返回空字符串，由调用方决定如何处理。
+ *
+ * 为什么必须校验：symbol 会流入
+ *   1. KV 缓存 key（污染/耗尽风险）
+ *   2. 上游 API 的 secid 参数（注入风险）
+ * 不校验的话，恶意或畸形输入会造成缓存投毒或上游请求异常。
+ */
 export function parseSymbol(url: URL): string {
-  return (url.searchParams.get('symbol') ?? '').trim();
+  const raw = (url.searchParams.get('symbol') ?? '').trim().toUpperCase();
+  // 去掉市场后缀后必须是纯 6 位数字
+  const code = raw.replace(/\.(SH|SZ|BJ|SS)$/i, '');
+  if (!/^\d{6}$/.test(code)) return '';
+  return code;
 }
 
 export function parsePeriod(url: URL): 'day' | 'week' | 'month' {

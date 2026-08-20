@@ -314,6 +314,7 @@ function divergenceConfidence(strokes: readonly DailyStroke[], idx: number, dire
   }
   if (prev === null || prev.macd_area <= 0) return 55;
   const ratio = st.macd_area / prev.macd_area;
+  if (!Number.isFinite(ratio)) return 55;  // 防 NaN/Infinity
   const raw = 94.5 - 35 * ratio;
   return clamp(Math.trunc(pyRound(raw, 0)), 55, 92);
 }

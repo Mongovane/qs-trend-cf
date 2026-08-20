@@ -314,15 +314,30 @@ export function buildRealisticPlan(
   if (b1 && b1.channel_high > entry && atr) {
     tCands.push([b1.channel_high + atr, '通道上轨+1ATR']);
   }
-  let target = entry + (entry - stop) * 2;
+  // 最低盈亏比要求：结构位目标太近（盈亏比 < 1.0）时，要么取更远的目标，
+  // 要么回退到2倍风险推算。
+  // 原实现「取最近的结构位」会导致盈亏比 0.03 这种荒谬结果——
+  // 箱体上沿 34.24 仅比入场价 34.19 高 0.05 元，等于没有上涨空间。
+  const MIN_RR = 1.0;
+  const riskPerShare = entry - stop;
+  const minTarget = entry + riskPerShare * MIN_RR;
+  
+  let target = entry + riskPerShare * 2;
   let targetBasis = '按2倍风险推算(无结构位)';
-  if (tCands.length) {
-    tCands.sort((a, b) => a[0] - b[0]);  // 取最近的目标 = 最可能达到
-    target = tCands[0][0];
-    targetBasis = tCands[0][1];
+  
+  // 从候选里找满足最低盈亏比的最近结构位
+  const viable = tCands
+    .filter(([px]) => px >= minTarget)     // 过滤掉盈亏比 < 1 的
+    .sort((a, b) => a[0] - b[0]);         // 剩余里取最近的
+  
+  if (viable.length) {
+    target = viable[0][0];
+    targetBasis = viable[0][1];
+  } else if (tCands.length) {
+    // 所有结构位都太近 → 说明价格已接近压力区，用2倍风险推算
+    targetBasis = '按2倍风险推算(所有结构位盈亏比不足)';
   }
 
-  const riskPerShare = entry - stop;
   const riskReward = riskPerShare > 0 ? pyRound((target - entry) / riskPerShare, 2) : 0;
 
   // ── 仓位：风险预算 ÷ 单股风险，再受单票权重上限约束 ──

@@ -107,13 +107,13 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
   }
 
   // ---- 3. 软否决 ----
-  let softVetoReason: string | null = null;
+  const softVetoReasons: string[] = [];
   for (const [kw, desc] of SOFT_VETO) {
     if (allSignalText.includes(kw)) {
-      softVetoReason = desc;
-      break;
+      softVetoReasons.push(desc);
     }
   }
+  const softVetoReason = softVetoReasons.length ? softVetoReasons.join('；') : null;
 
   // ---- 4. 分级体系重新评级 ----
   const isBuy = action === '买入' || action === '强烈买入';
@@ -218,6 +218,14 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
 
   // ---- 7. 写回 ----
   signalData.action = action;
+  
+  // plain_summary 必须在优化器**之后**重写，否则还是原始 action 的文案。
+  // 原实现在 signalEngine 里就写死了，优化器改了 action 但 summary 不变，
+  // 导致「观望 + 出现买入信号，建议半仓入场」这种矛盾。
+  if (vetoReason) {
+    signalData.plain_summary = `[优化：${signalData.original_action}→${action}] ${vetoReason}。`
+      + (signalData.plain_summary || '');
+  }
   signalData.optimized_action = action;
   signalData.original_action = originalAction;
   if (vetoReason) {
@@ -231,6 +239,10 @@ export function applySignalOptimization(signalData: OptimizedSignal): OptimizedS
   }
   signalData.risk_warnings = riskWarnings;
   signalData.position_advice = positionAdvice;
+  // 被否决时降低 confidence —— 否则"观望+置信度81%"让人困惑
+  if (vetoReason && signalData.confidence > 50) {
+    signalData.confidence = Math.round(signalData.confidence * 0.6);
+  }
   signalData.risk_notes = riskNotes;
   signalData.risk_reward = riskReward;
 
