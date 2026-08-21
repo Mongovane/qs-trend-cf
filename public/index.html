@@ -1145,6 +1145,9 @@ function initCharts() {
   minuteVolChart = echarts.init(document.getElementById('minute-vol'), T);
   indicatorChart = echarts.init(document.getElementById('indicator-chart'), T);
 
+  // 受控 wheel 平移（触摸板友好，只绑定一次）
+  setupControlledPan(document.getElementById('kline-chart'), klineChart, [volumeChart, indicatorChart]);
+
 
   let _resizeRaf = 0;
   window.addEventListener('resize', () => {
@@ -1239,6 +1242,42 @@ function switchView(view) {
       analyze(currentSymbol);
     }
   }
+}
+
+// ===== 受控 wheel 平移（触摸板友好） =====
+function setupControlledPan(dom, mainChart, syncCharts) {
+  if (!dom) return;
+  dom.addEventListener('wheel', (e) => {
+    // Ctrl 按住时交给 ECharts 缩放，不拦截
+    if (e.ctrlKey || e.metaKey) return;
+    // 只处理水平方向为主的滑动（触摸板横滑）或普通竖滑
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (delta === 0) return;
+    e.preventDefault();  // 阻止页面滚动
+
+    const opt = mainChart.getOption();
+    const dz = opt.dataZoom && opt.dataZoom[0];
+    if (!dz) return;
+    let start = dz.start ?? 0;
+    let end = dz.end ?? 100;
+    const span = end - start;
+
+    // 固定步长：可见范围的 3%，方向跟随滚动符号
+    const STEP = span * 0.03;
+    const dir = delta > 0 ? 1 : -1;   // 向右滚 = 看更新的数据
+    let move = dir * STEP;
+
+    // 边界钳制
+    if (start + move < 0) move = -start;
+    if (end + move > 100) move = 100 - end;
+    if (move === 0) return;
+
+    start += move; end += move;
+    mainChart.dispatchAction({ type: 'dataZoom', start, end });
+    for (const c of syncCharts) {
+      if (c) c.dispatchAction({ type: 'dataZoom', start, end });
+    }
+  }, { passive: false });
 }
 
 // ===== MA计算 =====
@@ -1601,7 +1640,7 @@ function renderKline(rawKlines, signal) {
       }
     },
     dataZoom: [
-      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: true },
+      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: 'slider', start: ds, end: 100, height: 28, bottom: 8,
         borderColor: 'transparent', backgroundColor: 'rgba(255,255,255,0.02)',
         fillerColor: 'rgba(255,255,255,0.06)',
@@ -1630,7 +1669,7 @@ function renderKline(rawKlines, signal) {
     }],
     tooltip: { trigger: 'axis', formatter: p => p[0] ? `<div style="font-size:11px">${p[0].axisValue}<br/>量 ${fmtVol(p[0].value)}</div>` : '' },
     dataZoom: [
-      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: true },
+      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: 'slider', start: ds, end: 100, show: false },
     ],
   }, true);
@@ -1758,6 +1797,17 @@ function bindChartTooltip() {
 
   klineChart.getZr().on('mouseout', function() {
     tooltipEl.style.display = 'none';
+  });
+
+  // ECharts 自带 tooltip 出现时隐藏信号说明面板，避免两个面板争视线
+  klineChart.on('showTip', function() { tooltipEl.style.display = 'none'; });
+
+  // 双击图表复位到默认范围（市面通行做法）
+  klineChart.getZr().on('dblclick', function() {
+    const ds = _klineData.length > 60 ? Math.max(0, (1 - 60 / _klineData.length) * 100) : 0;
+    klineChart.dispatchAction({ type: 'dataZoom', start: ds, end: 100 });
+    volumeChart.dispatchAction({ type: 'dataZoom', start: ds, end: 100 });
+    indicatorChart.dispatchAction({ type: 'dataZoom', start: ds, end: 100 });
   });
 }
 
@@ -3523,7 +3573,7 @@ function renderIndicator(ind) {
       }
     },
     dataZoom: [
-      { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: true },
+      { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: false },
       { type: 'slider', start: 0, end: 100, show: false },
     ],
   }, true);
