@@ -850,7 +850,10 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
     </div>
 
     <div class="chart-container">
-      <div id="kline-chart"></div>
+      <div id="zoom-hint" style="position:absolute;top:44px;right:12px;z-index:50;font-size:10px;
+     color:var(--t3);background:rgba(22,27,34,0.8);padding:3px 8px;border-radius:4px;
+     pointer-events:none;transition:opacity 0.6s;opacity:0">滚动平移 · Ctrl+滚动缩放 · 双击复位</div>
+<div id="kline-chart"></div>
       <div id="volume-chart"></div>
       <div class="indicator-toolbar" id="indicator-toolbar" style="display:none">
         <button class="it-btn active" data-ind="none" onclick="switchIndicator('none')">副图</button>
@@ -1277,6 +1280,15 @@ function sanitizeKlines(klines) {
 function renderKline(rawKlines, signal) {
   const klines = sanitizeKlines(rawKlines);
   if (!klines.length) { console.warn('[chart] 无有效K线'); return; }
+  // 首次渲染显示缩放提示，3秒后淡出
+  if (!window._zoomHintShown) {
+    window._zoomHintShown = true;
+    const hint = document.getElementById('zoom-hint');
+    if (hint) {
+      hint.style.opacity = '1';
+      setTimeout(() => { hint.style.opacity = '0'; }, 3500);
+    }
+  }
   _klineData = klines;
   _lastSignalData = signal;
   const dates = klines.map(k => k.date);
@@ -1589,7 +1601,7 @@ function renderKline(rawKlines, signal) {
       }
     },
     dataZoom: [
-      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: true, moveOnMouseWheel: false },
+      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: true },
       { type: 'slider', start: ds, end: 100, height: 28, bottom: 8,
         borderColor: 'transparent', backgroundColor: 'rgba(255,255,255,0.02)',
         fillerColor: 'rgba(255,255,255,0.06)',
@@ -1618,7 +1630,7 @@ function renderKline(rawKlines, signal) {
     }],
     tooltip: { trigger: 'axis', formatter: p => p[0] ? `<div style="font-size:11px">${p[0].axisValue}<br/>量 ${fmtVol(p[0].value)}</div>` : '' },
     dataZoom: [
-      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: true },
+      { type: 'inside', start: ds, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: true },
       { type: 'slider', start: ds, end: 100, show: false },
     ],
   }, true);
@@ -3511,7 +3523,7 @@ function renderIndicator(ind) {
       }
     },
     dataZoom: [
-      { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: true },
+      { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: 'ctrl', moveOnMouseMove: true, moveOnMouseWheel: true },
       { type: 'slider', start: 0, end: 100, show: false },
     ],
   }, true);
