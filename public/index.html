@@ -280,43 +280,97 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   .topbar { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
 }
 
-/* ===== 手机端专项适配（≤640px）===== */
+/* ═══════════ 手机端专项适配（≤640px）═══════════ */
 @media (max-width: 640px) {
-  /* 信号说明面板：改为屏幕底部固定条，不再绝对定位溢出 */
+  /* --- 顶栏：避开刘海/状态栏，分两行布局 --- */
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: max(env(safe-area-inset-top, 0px), 12px) 14px 10px;
+    gap: 8px 10px;
+    row-gap: 10px;
+  }
+  .logo { font-size: 15px; order: 1; flex-shrink: 0; }
+  .search-wrap { order: 2; flex: 1; min-width: 0; }
+  .search-wrap input { font-size: 14px; padding: 10px 14px; width: 100%; border-radius: 10px; }
+  .mode-toggle { order: 3; }
+  .scan-btn { order: 4; padding: 8px 14px; font-size: 14px; }
+  .watch-wrap { order: 5; margin-left: auto; }
+  .hot-stocks {
+    order: 6; width: 100%;
+    overflow-x: auto; flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    gap: 14px; padding-bottom: 2px;
+  }
+  .hot-stocks::-webkit-scrollbar { display: none; }
+  .hot-stocks .hs-btn { flex-shrink: 0; font-size: 14px; }
+
+  /* --- 股价条：独占整行，大字清晰 --- */
+  .quote-bar {
+    order: 7; width: 100%; margin-left: 0;
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px;
+    padding-top: 4px; border-top: 1px solid var(--line);
+  }
+  .qb-name { font-size: 15px; font-weight: 650; }
+  .qb-price { font-size: 26px; letter-spacing: -0.5px; }
+  .qb-pct { font-size: 15px; }
+  .qb-meta { font-size: 12px; color: var(--t3); width: 100%; }
+
+  /* --- 图表区 --- */
+  .chart-toolbar {
+    overflow-x: auto; flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px; gap: 4px;
+  }
+  .chart-toolbar::-webkit-scrollbar { display: none; }
+  .tb-btn { padding: 9px 14px; font-size: 14px; flex-shrink: 0; border-radius: 10px; }
+  .tb-btn.active { background: var(--s3); }
+  #kline-chart { min-height: 300px; }
+  .chart-container { min-height: 380px; }
+  .indicator-toolbar { overflow-x: auto; flex-wrap: nowrap; }
+  .indicator-toolbar::-webkit-scrollbar { display: none; }
+  .it-btn { padding: 8px 12px; font-size: 13px; flex-shrink: 0; }
+
+  /* --- 信号说明面板：底部固定条 --- */
   #signal-tooltip {
     position: fixed !important;
-    left: 8px !important; right: 8px !important;
-    top: auto !important; bottom: 12px !important;
+    left: 10px !important; right: 10px !important;
+    top: auto !important; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
     max-width: none !important; width: auto !important;
-    z-index: 500;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+    z-index: 500; border-radius: 12px;
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.7);
   }
-  /* K线图给触摸留更高的可视区 */
-  #kline-chart { min-height: 260px; }
-  .chart-container { min-height: 340px; }
-  /* 工具栏按钮增大点击区（触摸友好 ≥44px 推荐） */
-  .tb-btn { padding: 8px 10px; font-size: 13px; }
-  .it-btn { padding: 7px 9px; font-size: 12px; }
-  /* 热门股一行滑动而非换行堆叠 */
-  .hot-stocks { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
-  .hot-stocks::-webkit-scrollbar { display: none; }
-  /* 顶栏股价换行时更紧凑 */
-  .quote-bar { font-size: 13px; }
-  .quote-price { font-size: 22px; }
-  /* 右侧面板卡片间距收紧 */
-  .signal-card, .summary-card, .plan-card { margin-bottom: 8px; }
-  /* 模块评分 7 列在窄屏太挤 → 保持但缩小字号 */
-  .cs-grid { gap: 2px; padding: 8px; }
-  .cs-ring { width: 30px; height: 30px; }
-  /* 扫描表格横向滚动 */
+
+  /* --- 右侧面板：卡片间距、圆角统一（OKX 风格）--- */
+  .right-panel { padding: 10px 12px; border-left: none; }
+  .signal-card, .summary-card, .plan-card, .chanlun-card {
+    margin-bottom: 10px; border-radius: 14px;
+  }
+  .sc-header { padding: 14px 15px; font-size: 14px; }
+  .plan-prices { gap: 8px; }
+  .plan-price-item { padding: 10px 6px; border-radius: 10px; }
+
+  /* CANSLIM 环形在窄屏 */
+  .cs-grid { gap: 3px; padding: 10px 8px; }
+  .cs-ring { width: 32px; height: 32px; }
+  .cs-ring-inner { font-size: 11px; }
+  .cs-label { font-size: 7.5px; }
+
+  /* 扫描弹窗全屏 + 表格横滑 */
+  .scan-modal { width: 100vw !important; height: 100vh !important; max-width: none !important; border-radius: 0 !important; }
   .scan-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  /* 缩放提示在手机上改为"双指缩放"（手机无 Ctrl 键） */
-  #zoom-hint { font-size: 9px; }
+  .scan-table { min-width: 560px; }
+
+  #zoom-hint { font-size: 9px; top: 40px; right: 8px; }
+
+  /* ECharts tooltip 限制宽度不溢出 */
+  .chart-container div[style*="position: absolute"] { max-width: 88vw !important; }
 }
 
-/* 手机端 ECharts tooltip 限制宽度，避免溢出 */
-@media (max-width: 640px) {
-  .chart-container div[style*="position: absolute"] { max-width: 90vw !important; }
+/* 超小屏（≤380px，如 iPhone SE / mini）进一步压缩 */
+@media (max-width: 380px) {
+  .qb-price { font-size: 23px; }
+  .tb-btn { padding: 7px 10px; font-size: 13px; }
 }
 
 /* ===== 图表 ===== */
@@ -1055,6 +1109,13 @@ const STORAGE_SIGNALS = 'qs_signal_records';  // 信号记录存储key
 const MAX_SIGNAL_RECORDS = 200;  // 最多记录200条信号
 
 // ===== ECharts 全局主题色 =====
+// 移动端判断（响应式的核心开关）
+let IS_MOBILE = window.matchMedia('(max-width: 640px)').matches;
+window.matchMedia('(max-width: 640px)').addEventListener('change', (e) => {
+  IS_MOBILE = e.matches;
+  if (currentSymbol && _lastSignalData) renderKline(_klineData, _lastSignalData);
+});
+
 const C = {
   bg: 'transparent',
   up: '#ff4d5a',       // 涨-红
@@ -1552,6 +1613,24 @@ function renderKline(rawKlines, signal) {
     }
   }
 
+  // 最新价横线（OKX 标志性）：贯穿全图虚线 + 右端醒目价格气泡
+  const lastK = klines[klines.length - 1];
+  if (lastK) {
+    const lastUp = lastK.close >= lastK.open;
+    const priceColor = lastUp ? C.up : C.down;
+    markLines.push({
+      yAxis: lastK.close,
+      lineStyle: { color: priceColor, type: [4, 4], width: 1, opacity: 0.7 },
+      label: {
+        formatter: lastK.close.toFixed(2),
+        color: '#fff', fontSize: 10.5, fontWeight: 'bold',
+        backgroundColor: priceColor, padding: [3, 6], borderRadius: 3,
+        position: 'insideEndTop',
+      },
+      _isLatestPrice: true,  // 标记，避让逻辑不动它
+    });
+  }
+
   // ── 标签避让：价位接近的线交替左右分列，超量的降级为无标签细线 ──
   {
     const PRIORITY = { '计划买入': 0, '计划止损': 1, '形态目标': 2, '下行目标': 2,
@@ -1561,24 +1640,43 @@ function renderKline(rawKlines, signal) {
       for (const k of Object.keys(PRIORITY)) if (f.startsWith(k)) return k;
       return '';
     };
+    // 最新价线单独抽出，不参与避让/限量
+    const latestPriceLines = markLines.filter((ml) => ml._isLatestPrice);
     // a) 方向过滤：建议买入时，做空侧的历史线只是噪声
     const filtered = markLines.filter((ml) => {
+      if (ml._isLatestPrice) return false;  // 最新价线后面单独加回
       const k = keyOf(ml);
       if (!isBearish && k === '历史做空') return false;
       if (isBearish && k === '历史突破') return false;
       return true;
     });
-    // b) 重要度排序 + 限量（最多 5 条带标签）
+    // b) 重要度排序 + 限量。手机屏窄，只留 2 条最关键的（计划买入/止损）
     filtered.sort((a, b) => (PRIORITY[keyOf(a)] ?? 9) - (PRIORITY[keyOf(b)] ?? 9));
-    const LABEL_CAP = 5;
+    const LABEL_CAP = IS_MOBILE ? 2 : 5;
     filtered.forEach((ml, i) => {
       if (i >= LABEL_CAP && ml.label) {
         ml.label = { show: false };
-        ml.lineStyle = { ...(ml.lineStyle || {}), opacity: 0.28 };
+        ml.lineStyle = { ...(ml.lineStyle || {}), opacity: IS_MOBILE ? 0.35 : 0.28 };
+      } else if (ml.label && IS_MOBILE) {
+        // 手机端：标签移到右侧末端、缩小字号、精简文字（只留价格）
+        ml.label.position = ml.label.position.includes('Bottom') ? 'insideEndBottom' : 'insideEndTop';
+        ml.label.fontSize = 8.5;
+        ml.label.padding = [2, 3];
+        // 精简：'计划买入 1274.00' → '买 1274'
+        const orig = ml.label.formatter || '';
+        ml.label.formatter = orig
+          .replace('计划买入 ', '买')
+          .replace('计划止损 ', '损')
+          .replace('形态目标 ', '标')
+          .replace('下行目标 ', '↓')
+          .replace('海龟止损 ', '龟损')
+          .replace('历史突破 ', '')
+          .replace('历史做空 ', '')
+          .replace(/(\d+)\.\d+/, '$1');  // 去掉小数
       }
     });
-    // c) 纵向过近的标签左右分列
-    const priceRange = klines.length
+    // c) 纵向过近的标签左右分列（仅桌面端；手机端标签已统一在右侧）
+    const priceRange = !IS_MOBILE && klines.length
       ? Math.max(...klines.map(k => k.high)) - Math.min(...klines.map(k => k.low))
       : 0;
     const MIN_GAP = priceRange * 0.045;
@@ -1598,7 +1696,7 @@ function renderKline(rawKlines, signal) {
       lastY = ml.yAxis;
     }
     markLines.length = 0;
-    markLines.push(...filtered);
+    markLines.push(...filtered, ...latestPriceLines);
   }
 
   // ── Y 轴范围：以 K 线为准，markLine 偏离过远时不参与，避免整段画布被拉空 ──
@@ -1646,7 +1744,7 @@ function renderKline(rawKlines, signal) {
       },
       splitLine: { lineStyle: { color: C.grid } },
     },
-    grid: { left: 60, right: 88, top: 30, bottom: 50 },
+    grid: { left: IS_MOBILE ? 40 : 60, right: IS_MOBILE ? 46 : 88, top: 30, bottom: 50 },
     legend: {
       data: ['MA5','MA10','MA20','MA60'],
       top: 4, left: 60,
@@ -1665,8 +1763,19 @@ function renderKline(rawKlines, signal) {
       { name: 'MA20', type: 'line', data: ma20, symbol: 'none', itemStyle: { color: C.ma20 }, lineStyle: { color: C.ma20, width: 1.1 } },
       { name: 'MA60', type: 'line', data: ma60, symbol: 'none', itemStyle: { color: C.ma60 }, lineStyle: { color: C.ma60, width: 1.1 } },
     ],
+    axisPointer: {
+      link: [{ xAxisIndex: 'all' }],  // 与成交量图十字光标联动
+      label: { backgroundColor: '#2d333b', color: '#eaecef', fontSize: 10, borderWidth: 0 },
+    },
     tooltip: {
-      trigger: 'axis', axisPointer: { type: 'cross', lineStyle: { color: '#666' } },
+      trigger: 'axis', confine: true,
+      axisPointer: {
+        type: 'cross',
+        lineStyle: { color: 'rgba(139,148,158,0.5)', width: 1, type: [4, 3] },
+        crossStyle: { color: 'rgba(139,148,158,0.5)', width: 1, type: [4, 3] },
+        // OKX 特征：Y 轴光标显示价格气泡
+        label: { backgroundColor: '#2d333b', color: '#eaecef', fontSize: 10, precision: 2, borderWidth: 0, padding: [3, 6] },
+      },
       formatter: (params) => {
         if (!params || !params.length) return '';
         const k = klines[params[0].dataIndex];
@@ -1714,7 +1823,7 @@ function renderKline(rawKlines, signal) {
     animation: false,
     xAxis: { type: 'category', data: dates, show: false },
     yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
-    grid: { left: 60, right: 50, top: 5, bottom: 5 },
+    grid: { left: IS_MOBILE ? 40 : 60, right: IS_MOBILE ? 46 : 50, top: 5, bottom: 5 },
     series: [{
       type: 'bar', data: klines.map(k => ({
         value: k.volume,
@@ -2279,7 +2388,7 @@ function renderMinute(data, chanlunData) {
       },
       splitLine: { lineStyle: { color: C.grid, type: 'dashed' } },
     },
-    grid: { left: 70, right: 60, top: 10, bottom: 25 },
+    grid: { left: IS_MOBILE ? 44 : 70, right: IS_MOBILE ? 40 : 60, top: 10, bottom: 25 },
     series: [
       {
         name: '价格', type: 'line', data: prices, symbol: 'none',
@@ -2325,7 +2434,7 @@ function renderMinute(data, chanlunData) {
     animation: false,
     xAxis: { type: 'category', data: times, show: false },
     yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
-    grid: { left: 70, right: 60, top: 5, bottom: 5 },
+    grid: { left: IS_MOBILE ? 44 : 70, right: IS_MOBILE ? 40 : 60, top: 5, bottom: 5 },
     series: [{ type: 'bar', data: vc }],
     tooltip: { trigger: 'axis', formatter: p => p[0] ? `<div style="font-size:11px">${p[0].axisValue}<br/>量 ${fmtVol(p[0].value)}</div>` : '' },
   }, true);
@@ -2365,7 +2474,7 @@ function _renderDailyFlow(flows) {
     legend: { data: ['主力净流入', '超大单'], textStyle: { color: C.textDim, fontSize: 10 }, top: 2, itemWidth: 12, itemHeight: 8 },
     xAxis: { type: 'category', data: dates, axisLabel: { color: C.textDim, fontSize: 9 }, axisLine: { lineStyle: { color: C.axis } } },
     yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
-    grid: { left: 50, right: 20, top: 22, bottom: 18 },
+    grid: { left: IS_MOBILE ? 40 : 50, right: IS_MOBILE ? 12 : 20, top: 22, bottom: 18 },
     series: [
       { name: '主力净流入', type: 'bar', data: mainNet.map(v => ({ value: v, itemStyle: { color: v >= 0 ? C.up + '88' : C.down + '88' } })) },
       { name: '超大单', type: 'line', data: superLarge, symbol: 'circle', symbolSize: 3, lineStyle: { color: C.ma20, width: 1 } },
@@ -2428,7 +2537,7 @@ function renderRealtimeFlow(data) {
     legend: { data: ['主力净流入(累计)', '超大单(累计)'], textStyle: { color: C.textDim, fontSize: 10 }, top: 2, itemWidth: 12, itemHeight: 8 },
     xAxis: { type: 'category', data: times, axisLabel: { color: C.textDim, fontSize: 9, interval: 29 }, axisLine: { lineStyle: { color: C.axis } } },
     yAxis: { type: 'value', axisLabel: { color: C.textDim, fontSize: 9, formatter: fmtAxisNum }, splitLine: { lineStyle: { color: C.grid } } },
-    grid: { left: 50, right: 20, top: 22, bottom: 18 },
+    grid: { left: IS_MOBILE ? 40 : 50, right: IS_MOBILE ? 12 : 20, top: 22, bottom: 18 },
     series: [
       { name: '主力净流入(累计)', type: 'line', data: mainNet,
         symbol: 'none', smooth: 0.2, z: 2,
