@@ -356,8 +356,18 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   .cs-ring-inner { font-size: 11px; }
   .cs-label { font-size: 7.5px; }
 
-  /* 扫描弹窗全屏 + 表格横滑 */
-  .scan-modal { width: 100vw !important; height: 100vh !important; max-width: none !important; border-radius: 0 !important; }
+  /* 扫描弹窗：手机端全屏（含刘海/底部安全区）*/
+  .scan-overlay { align-items: stretch !important; }
+  .scan-modal {
+    width: 100vw !important; height: 100vh !important;
+    max-width: none !important; max-height: none !important;
+    border-radius: 0 !important; border: none !important;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .scan-header { padding: 16px 18px; position: sticky; top: 0; background: var(--s1); z-index: 2; }
+  .scan-close { font-size: 26px; padding: 0 8px; }
+  .scan-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .scan-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .scan-table { min-width: 560px; }
 
@@ -950,7 +960,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
     </div>
 
     <div class="chart-container">
-      <div id="zoom-hint" style="position:absolute;top:44px;right:12px;z-index:50;font-size:10px;
+      <div id="ma-bar" style="display:flex;gap:10px;padding:4px 12px 2px;font-size:11px;font-family:var(--num);flex-wrap:wrap;align-items:center;min-height:20px"></div>
+<div id="zoom-hint" style="position:absolute;top:44px;right:12px;z-index:50;font-size:10px;
      color:var(--t3);background:rgba(22,27,34,0.8);padding:3px 8px;border-radius:4px;
      pointer-events:none;transition:opacity 0.6s;opacity:0">滚动平移 · Ctrl+滚动缩放 · 双击复位</div>
 <div id="kline-chart"></div>
@@ -1352,6 +1363,27 @@ function switchView(view) {
 }
 
 // ===== 受控 wheel 平移（触摸板友好） =====
+// 富途风格：顶部 MA 数值条（默认最新，十字光标移动时更新到对应K线）
+function updateMaBar(idx) {
+  const bar = document.getElementById('ma-bar');
+  const cache = window._maCache;
+  if (!bar || !cache || !cache.ma5) return;
+  const len = cache.ma5.length;
+  const i = (idx == null || idx < 0 || idx >= len) ? len - 1 : idx;
+  const mas = [
+    ['MA5', window._maCache?.ma5?.[i], C.ma5],
+    ['MA10', window._maCache?.ma10?.[i], C.ma10],
+    ['MA20', window._maCache?.ma20?.[i], C.ma20],
+    ['MA60', window._maCache?.ma60?.[i], C.ma60],
+  ];
+  let html = '';
+  for (const [name, val, color] of mas) {
+    const v = (val != null && !isNaN(val)) ? Number(val).toFixed(2) : '--';
+    html += `<span style="color:${color}">${name} ${v}</span>`;
+  }
+  bar.innerHTML = html;
+}
+
 function setupControlledPan(dom, mainChart, syncCharts) {
   if (!dom) return;
   dom.addEventListener('wheel', (e) => {
@@ -1451,6 +1483,7 @@ function renderKline(rawKlines, signal) {
   const ma10 = calcMA(klines, 10);
   const ma20 = calcMA(klines, 20);
   const ma60 = calcMA(klines, 60);
+  window._maCache = { ma5, ma10, ma20, ma60 };  // 供顶部数值条读取
 
   // 买卖点标记——买入▲在K线下方，卖出▼在K线上方
   const markPoints = [];
@@ -1744,13 +1777,8 @@ function renderKline(rawKlines, signal) {
       },
       splitLine: { lineStyle: { color: C.grid } },
     },
-    grid: { left: IS_MOBILE ? 40 : 60, right: IS_MOBILE ? 46 : 88, top: 30, bottom: 50 },
-    legend: {
-      data: ['MA5','MA10','MA20','MA60'],
-      top: 4, left: 60,
-      textStyle: { color: C.textDim, fontSize: 10 },
-      itemWidth: 14, itemHeight: 2,
-    },
+    grid: { left: IS_MOBILE ? 42 : 60, right: IS_MOBILE ? 52 : 88, top: IS_MOBILE ? 8 : 12, bottom: 50 },
+    legend: { show: false },
     series: [
       {
         name: 'K线', type: 'candlestick', data: ohlc,
@@ -1839,6 +1867,7 @@ function renderKline(rawKlines, signal) {
 
   bindZoomSync();
   updateZoomInfo(ds, 100);
+  updateMaBar(null);  // 顶部 MA 数值条显示最新值（此时 _maCache 已就绪）
   if (currentView !== 'minute') {
     document.getElementById('indicator-toolbar').style.display = 'flex';
   }
@@ -1892,6 +1921,17 @@ function bindChartTooltip() {
   const chartDom = document.getElementById('kline-chart');
 
   // 用ZRender的mousemove获取像素坐标，再转换为数据值，检测是否靠近信号线/标记点
+  // 初始化顶部 MA 数值条（默认显示最新）
+  updateMaBar(null);
+
+  // 十字光标移动时更新数值条到对应 K 线
+  klineChart.on('updateAxisPointer', function(evt) {
+    if (evt && evt.axesInfo && evt.axesInfo[0]) {
+      const idx = evt.axesInfo[0].value;
+      if (typeof idx === 'number') updateMaBar(idx);
+    }
+  });
+
   klineChart.getZr().on('mousemove', function(e) {
     if (!_signalLines.length && !_signalPoints.length) {
       tooltipEl.style.display = 'none';
@@ -3967,7 +4007,7 @@ function showEngineInfo() {
   const ov = document.createElement('div');
   ov.className = 'scan-overlay show';
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
-  ov.innerHTML = `<div class="scan-modal" style="width:min(560px,92vw)">
+  ov.innerHTML = `<div class="scan-modal" style="width:min(560px,92vw);max-height:84vh">
     <div class="scan-header"><span class="scan-title">结论是怎么算出来的</span>
       <button class="scan-close">×</button></div>
     <div class="scan-body">${html}</div></div>`;
