@@ -2,8 +2,15 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>趋势终端 · A股买卖点分析</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="趋势终端">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#0a0c0f">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -271,6 +278,45 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   html, body { overflow: auto; }
   .quote-bar { margin-left: 0; }
   .topbar { flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px; }
+}
+
+/* ===== 手机端专项适配（≤640px）===== */
+@media (max-width: 640px) {
+  /* 信号说明面板：改为屏幕底部固定条，不再绝对定位溢出 */
+  #signal-tooltip {
+    position: fixed !important;
+    left: 8px !important; right: 8px !important;
+    top: auto !important; bottom: 12px !important;
+    max-width: none !important; width: auto !important;
+    z-index: 500;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.6);
+  }
+  /* K线图给触摸留更高的可视区 */
+  #kline-chart { min-height: 260px; }
+  .chart-container { min-height: 340px; }
+  /* 工具栏按钮增大点击区（触摸友好 ≥44px 推荐） */
+  .tb-btn { padding: 8px 10px; font-size: 13px; }
+  .it-btn { padding: 7px 9px; font-size: 12px; }
+  /* 热门股一行滑动而非换行堆叠 */
+  .hot-stocks { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .hot-stocks::-webkit-scrollbar { display: none; }
+  /* 顶栏股价换行时更紧凑 */
+  .quote-bar { font-size: 13px; }
+  .quote-price { font-size: 22px; }
+  /* 右侧面板卡片间距收紧 */
+  .signal-card, .summary-card, .plan-card { margin-bottom: 8px; }
+  /* 模块评分 7 列在窄屏太挤 → 保持但缩小字号 */
+  .cs-grid { gap: 2px; padding: 8px; }
+  .cs-ring { width: 30px; height: 30px; }
+  /* 扫描表格横向滚动 */
+  .scan-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* 缩放提示在手机上改为"双指缩放"（手机无 Ctrl 键） */
+  #zoom-hint { font-size: 9px; }
+}
+
+/* 手机端 ECharts tooltip 限制宽度，避免溢出 */
+@media (max-width: 640px) {
+  .chart-container div[style*="position: absolute"] { max-width: 90vw !important; }
 }
 
 /* ===== 图表 ===== */
@@ -1250,32 +1296,40 @@ function setupControlledPan(dom, mainChart, syncCharts) {
   dom.addEventListener('wheel', (e) => {
     // Ctrl 按住时交给 ECharts 缩放，不拦截
     if (e.ctrlKey || e.metaKey) return;
-    // 只处理水平方向为主的滑动（触摸板横滑）或普通竖滑
     const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     if (delta === 0) return;
-    e.preventDefault();  // 阻止页面滚动
+    e.preventDefault();
 
+    // 读取当前所有 dataZoom 的窗口。K线图有两个 dataZoom（inside + slider），
+    // 二者 start/end 同步，取第一个即可。用 getOption() 每次拿最新值。
     const opt = mainChart.getOption();
-    const dz = opt.dataZoom && opt.dataZoom[0];
-    if (!dz) return;
-    let start = dz.start ?? 0;
-    let end = dz.end ?? 100;
+    const dzList = opt.dataZoom || [];
+    if (!dzList.length) return;
+    let start = dzList[0].start;
+    let end = dzList[0].end;
+    if (start == null) start = 0;
+    if (end == null) end = 100;
     const span = end - start;
+    if (span <= 0) return;
 
-    // 固定步长：可见范围的 3%，方向跟随滚动符号
-    const STEP = span * 0.03;
-    const dir = delta > 0 ? 1 : -1;   // 向右滚 = 看更新的数据
+    // 固定步长：可见范围的 8%（触摸板一次滑动要有明显位移）
+    const STEP = Math.max(1.5, span * 0.08);
+    // 方向：横滑 deltaX>0 → 窗口右移(看更新)；竖滑 deltaY>0(下滚) → 窗口左移(看更早)
+    const usingX = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    const dir = usingX ? (e.deltaX > 0 ? 1 : -1) : (e.deltaY > 0 ? -1 : 1);
     let move = dir * STEP;
 
     // 边界钳制
     if (start + move < 0) move = -start;
     if (end + move > 100) move = 100 - end;
-    if (move === 0) return;
+    if (Math.abs(move) < 0.001) return;
 
-    start += move; end += move;
-    mainChart.dispatchAction({ type: 'dataZoom', start, end });
+    const ns = start + move, ne = end + move;
+    // 关键：dispatchAction 要作用到所有 dataZoom（inside + slider），
+    // 不指定 index 时 ECharts 会更新全部同类，但显式传 batch 更可靠
+    mainChart.dispatchAction({ type: 'dataZoom', start: ns, end: ne });
     for (const c of syncCharts) {
-      if (c) c.dispatchAction({ type: 'dataZoom', start, end });
+      if (c) { try { c.dispatchAction({ type: 'dataZoom', start: ns, end: ne }); } catch(err) {} }
     }
   }, { passive: false });
 }
@@ -1798,6 +1852,14 @@ function bindChartTooltip() {
   klineChart.getZr().on('mouseout', function() {
     tooltipEl.style.display = 'none';
   });
+
+  // 手机端：触摸结束后延迟隐藏信号说明面板，避免一直挡住图
+  const kcDom = document.getElementById('kline-chart');
+  if (kcDom && 'ontouchstart' in window) {
+    kcDom.addEventListener('touchend', () => {
+      setTimeout(() => { tooltipEl.style.display = 'none'; }, 2000);
+    }, { passive: true });
+  }
 
   // ECharts 自带 tooltip 出现时隐藏信号说明面板，避免两个面板争视线
   klineChart.on('showTip', function() { tooltipEl.style.display = 'none'; });
@@ -4286,6 +4348,14 @@ function renderScanError(data) {
       <div style="color:#888;font-size:13px">${data.error || '未知错误'}</div>
       <div style="margin-top:16px"><button class="scan-btn" onclick="renderScanIdle()">重试</button></div>
     </div>`;
+}
+</script>
+<script>
+// PWA: 注册 service worker（行情走网络优先，静态资源缓存兜底）
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('SW 注册失败', e));
+  });
 }
 </script>
 </body>
