@@ -885,7 +885,9 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
     <div class="summary-card" id="summary-card">
       <div class="sc-header" style="cursor:help" onclick="showEngineInfo()">量化规则结论
         <span style="margin-left:auto;font-size:9px;font-weight:400;color:var(--t3);
-                     border:1px solid var(--line-2);border-radius:3px;padding:1px 5px">计算依据</span></div>
+                     border:1px solid var(--line-2);border-radius:3px;padding:1px 5px">计算依据</span>
+        <span onclick="event.stopPropagation();copyConclusion()" style="font-size:9px;font-weight:400;color:var(--t3);
+                     border:1px solid var(--line-2);border-radius:3px;padding:1px 5px;margin-left:4px;cursor:pointer">复制</span></div>
       <div class="sum-body" id="sum-body">
         <div class="sum-action-row">
           <span class="sum-badge sum-badge-watch">等待分析</span>
@@ -1103,9 +1105,35 @@ const QS_THEME = {
   },
 };
 
+// ===== 键盘快捷键（市面主流工具标配）=====
+function initKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // 输入框聚焦时不触发（除了 Esc）
+    const inInput = document.activeElement && 
+      (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+    if (inInput) {
+      if (e.key === 'Escape') document.activeElement.blur();
+      return;
+    }
+    // 弹窗打开时不触发
+    if (document.querySelector('.scan-overlay.show')) return;
+
+    switch(e.key) {
+      case '1': switchView('dayk'); break;
+      case '2': switchView('week'); break;
+      case '3': switchView('minute'); break;
+      case '/': e.preventDefault(); document.getElementById('search-input').focus(); break;
+      case 'b': case 'B': openScan && openScan(); break;
+      case 'p': case 'P': document.getElementById('mt-pro')?.click(); break;
+      case 'x': case 'X': document.getElementById('mt-simple')?.click(); break;
+    }
+  });
+}
+
 // ===== 初始化 =====
 function initCharts() {
   echarts.registerTheme('qsdark', QS_THEME);
+  initKeyboardShortcuts();
   const T = 'qsdark';
   klineChart = echarts.init(document.getElementById('kline-chart'), T);
   volumeChart = echarts.init(document.getElementById('volume-chart'), T);
@@ -3646,6 +3674,29 @@ async function loadOverview() {
   }).join('');
 }
 
+// ===== 复制结论到剪贴板 =====
+function copyConclusion() {
+  const sig = window._lastSignal;
+  const data = window._lastAnalyzeData;
+  if (!sig || !data) return;
+  const q = data.quote || {};
+  const plan = sig.trade_plan || {};
+  const lines = [
+    `${q.name || ''}(${data.symbol}) ${q.price || ''} ${q.pct >= 0 ? '+' : ''}${(q.pct||0).toFixed(2)}%`,
+    `结论：${sig.action} · 评分${sig.score} · 风险${sig.risk_level}`,
+    sig.action.includes('买入') ? `买入${plan.entry_price} 止损${plan.stop_loss} 目标${plan.target_price} 盈亏比${sig.risk_reward}` : '',
+    sig.plain_summary || '',
+    `— 量化规则结论(非投资建议) ${new Date().toLocaleDateString('zh-CN')}`,
+  ].filter(Boolean);
+  const text = lines.join('\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(
+      () => showToast('已复制结论', '可粘贴分享'),
+      () => showToast('复制失败', '浏览器不支持')
+    );
+  }
+}
+
 // ===== 引擎说明（回答「这个结论是怎么来的」）=====
 function showEngineInfo() {
   const prof = (window._lastSignal && window._lastSignal.scoring_profile) || 'enhanced';
@@ -3772,7 +3823,12 @@ function renderSector(data) {
   const card = document.getElementById('sector-card');
   const body = document.getElementById('sector-body');
   const sector = data && data.sector;
-  if (!sector) { card.style.display = 'none'; return; }
+  if (!sector) {
+    // 无行业数据时给出说明而非静默消失（指数、ETF、新股常无行业归属）
+    card.style.display = '';
+    body.innerHTML = '<div style="font-size:11px;color:var(--t3);padding:4px 0">暂无行业归属数据（指数/ETF/新股或接口未返回）</div>';
+    return;
+  }
   card.style.display = '';
   const pctColor = (v) => v > 0 ? 'var(--up)' : v < 0 ? 'var(--down)' : 'var(--t2)';
   const fmtP = (v) => v != null ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%' : '--';
@@ -3839,10 +3895,12 @@ function calcSignalAccuracy(code) {
     // 归一化方向：优化器会输出「强烈买入 / 买入 / 谨慎买入 / 观望」等变体，
     // 必须按方向归类，不能用字符串全等（原实现导致准确率恒为 0%）。
     const dir = signalDirection(prev.action);
+    // 观望不计入准确率分母：观望"正确"=波动<3%几乎必然成立，会虚高准确率。
+    // 只统计明确的买入/卖出方向信号。
+    if (dir !== 'buy' && dir !== 'sell') continue;
     let isCorrect = false;
     if (dir === 'buy' && priceChange > 0) isCorrect = true;
     else if (dir === 'sell' && priceChange < 0) isCorrect = true;
-    else if (dir === 'watch') isCorrect = Math.abs(priceChange) < 3;
     total++;
     if (isCorrect) correct++;
     if (details.length < 5) {
@@ -3853,7 +3911,18 @@ function calcSignalAccuracy(code) {
       });
     }
   }
-  if (total === 0) return null;
+  // 没有方向性信号时，准确率无意义
+  const buyCnt = records.filter(r => signalDirection(r.action) === 'buy').length;
+  const sellCnt = records.filter(r => signalDirection(r.action) === 'sell').length;
+  const watchCnt = records.filter(r => signalDirection(r.action) === 'watch').length;
+  if (total === 0) {
+    // 全是观望，没有可评估的方向信号
+    return {
+      accuracy: null, total: 0, correct: 0,
+      buyCount: buyCnt, sellCount: sellCnt, watchCount: watchCnt,
+      details: [],
+    };
+  }
   return {
     accuracy: Math.round(correct / total * 100),
     total, correct,
@@ -3871,11 +3940,12 @@ function renderSignalAccuracy(code) {
     return;
   }
   card.style.display = 'block';
-  const accColor = stats.accuracy >= 60 ? C.up : stats.accuracy >= 40 ? '#f0b90b' : C.down;
+  const accColor = stats.accuracy == null ? 'var(--t3)' : stats.accuracy >= 60 ? C.up : stats.accuracy >= 40 ? '#f0b90b' : C.down;
+  const accText = stats.accuracy == null ? '暂无' : stats.accuracy + '%';
   document.getElementById('sa-stats').innerHTML = `
     <div class="sa-item">
-      <span class="sa-val" style="color:${accColor}">${stats.accuracy}%</span>
-      <span class="sa-label">准确率</span>
+      <span class="sa-val" style="color:${accColor};font-size:${stats.accuracy == null ? '15px' : ''}">${accText}</span>
+      <span class="sa-label">${stats.accuracy == null ? '仅观望' : '准确率'}</span>
     </div>
     <div class="sa-item">
       <span class="sa-val" style="color:#ddd">${stats.total}</span>
